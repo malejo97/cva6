@@ -177,6 +177,11 @@ ${HPDCACHE_DIR}/rtl/src/common/macros/behav/hpdcache_sram_wmask_1rw.sv
 ${CVA6_REPO_DIR}/core/pmp/src/pmp.sv
 ${CVA6_REPO_DIR}/core/pmp/src/pmp_entry.sv
 
+// SPMP
+${CVA6_REPO_DIR}/core/spmp/src/spmp.sv
+${CVA6_REPO_DIR}/core/spmp/src/spmp_hyp.sv
+${CVA6_REPO_DIR}/core/spmp/src/spmp_entry.sv
+
 // Tracer (behavioral code, not RTL)
 ${CVA6_REPO_DIR}/common/local/util/instr_tracer_if.sv
 ${CVA6_REPO_DIR}/common/local/util/instr_tracer.sv

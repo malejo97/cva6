@@ -174,7 +174,7 @@ module csr_regfile
     output riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0] spmpaddr_o,  // SPMP address registers
     // vSPMP
     output riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]  vspmpcfg_o,  // vSPMP configuration registers
-    output riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0] vspmpaddr_o  // vSPMP address registers
+    output riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0] vspmpaddr_o,  // vSPMP address registers
     // RVFI
     output rvfi_probes_csr_t rvfi_csr_o
 );

@@ -72,7 +72,7 @@ package cva6_config_pkg;
 
   localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::WT;
 
-  localparam CVA6ConfigMmuPresent = 1;
+  localparam CVA6ConfigMmuPresent = 0;
 
   localparam CVA6ConfigSpmpPresent = 1;
   localparam CVA6ConfigNrSPMPEntries = 64;
