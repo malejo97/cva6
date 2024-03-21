@@ -120,6 +120,11 @@ package config_pkg;
     logic [15:0][63:0]           PMPAddrRstVal;
     // PMP CSR read-only bits
     bit [15:0]                   PMPEntryReadOnly;
+    /// Number of SPMP entries.
+    int unsigned                 NrSPMPEntries;
+    /// Supervisor Physical Memory Protection (SPMP) CSR reset values
+    logic [63:0][63:0]           SPMPCfgRstVal;
+    logic [63:0][63:0]           SPMPAddrRstVal;
     // NOC bus type
     noc_type_e                   NOCType;
     // Number of PMA non idempotent rules
@@ -234,6 +239,9 @@ package config_pkg;
     logic [15:0][63:0]           PMPCfgRstVal;
     logic [15:0][63:0]           PMPAddrRstVal;
     bit [15:0]                   PMPEntryReadOnly;
+    int unsigned                 NrSPMPEntries;
+    logic [63:0][63:0]           SPMPCfgRstVal;
+    logic [63:0][63:0]           SPMPAddrRstVal;
     noc_type_e                   NOCType;
     int unsigned                 NrNonIdempotentRules;
     logic [NrMaxRules-1:0][63:0] NonIdempotentAddrBase;
@@ -302,6 +310,7 @@ package config_pkg;
     assert (Cfg.NrExecuteRegionRules <= NrMaxRules);
     assert (Cfg.NrCachedRegionRules <= NrMaxRules);
     assert (Cfg.NrPMPEntries <= 16);
+    assert (Cfg.NrSPMPEntries <= 64);
 `endif
     // pragma translate_on
   endfunction

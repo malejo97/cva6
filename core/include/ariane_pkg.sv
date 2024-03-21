@@ -582,6 +582,14 @@ package ariane_pkg;
   localparam int unsigned INSTR_TLB_ENTRIES = cva6_config_pkg::CVA6ConfigInstrTlbEntries;
   localparam int unsigned DATA_TLB_ENTRIES = cva6_config_pkg::CVA6ConfigDataTlbEntries;
 
+  // ---------------
+  // SPMP instanciation
+  // ---------------
+  localparam bit SPMP_PRESENT = cva6_config_pkg::CVA6ConfigSpmpPresent;
+  localparam int unsigned SPMP_N_ENTRIES  = (cva6_config_pkg::CVA6ConfigNrSPMPEntries > 0)  ?
+                                            (cva6_config_pkg::CVA6ConfigNrSPMPEntries)      :
+                                            (1);
+
   // -------------------
   // Performance counter
   // -------------------

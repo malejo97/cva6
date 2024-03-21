@@ -150,6 +150,11 @@ module load_store_unit
     input  riscv::pmpcfg_t [15:0]                   pmpcfg_i,
     // PMP address - CSR_REGFILE
     input  logic           [15:0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
+    // SPMP
+    input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]    spmpcfg_i,
+    input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]   spmpaddr_i,
+    input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]    vspmpcfg_i,
+    input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]   vspmpaddr_i,
 
     // RVFI inforamtion - RVFI
     output lsu_ctrl_t                    rvfi_lsu_ctrl_o,

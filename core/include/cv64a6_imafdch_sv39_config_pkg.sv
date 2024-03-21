@@ -74,6 +74,9 @@ package cva6_config_pkg;
 
   localparam CVA6ConfigMmuPresent = 1;
 
+  localparam CVA6ConfigSpmpPresent = 1;
+  localparam CVA6ConfigNrSPMPEntries = 64;
+
   localparam CVA6ConfigRvfiTrace = 1;
 
   localparam config_pkg::cva6_user_cfg_t cva6_cfg = '{
@@ -111,6 +114,9 @@ package cva6_config_pkg;
       PMPCfgRstVal: {16{64'h0}},
       PMPAddrRstVal: {16{64'h0}},
       PMPEntryReadOnly: 16'd0,
+      NrSPMPEntries: unsigned'(CVA6ConfigNrSPMPEntries),
+      SPMPCfgRstVal: {64{64'h0}},
+      SPMPAddrRstVal: {64{64'h0}},
       NOCType: config_pkg::NOC_TYPE_AXI4_ATOP,
       // idempotent region
       NrNonIdempotentRules:

@@ -169,6 +169,12 @@ module csr_regfile
     output logic [15:0][CVA6Cfg.PLEN-3:0] pmpaddr_o,
     // TO_BE_COMPLETED - PERF_COUNTERS
     output logic [31:0] mcountinhibit_o,
+    // SPMP
+    output riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]  spmpcfg_o,   // SPMP configuration registers
+    output riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0] spmpaddr_o,  // SPMP address registers
+    // vSPMP
+    output riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]  vspmpcfg_o,  // vSPMP configuration registers
+    output riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0] vspmpaddr_o  // vSPMP address registers
     // RVFI
     output rvfi_probes_csr_t rvfi_csr_o
 );
@@ -298,6 +304,16 @@ module csr_regfile
   assign pmpcfg_o  = pmpcfg_q[15:0];
   assign pmpaddr_o = pmpaddr_q;
 
+  riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]   spmpcfg_q, spmpcfg_d;
+  riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]  spmpaddr_q, spmpaddr_d;
+  riscv::xlen_t                           spmpswitch0_q, spmpswitch0_d;
+  riscv::xlen_t                           spmpswitch1_q, spmpswitch1_d;
+
+  riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]   vspmpcfg_q, vspmpcfg_d;
+  riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]  vspmpaddr_q, vspmpaddr_d;
+  riscv::xlen_t                           vspmpswitch0_q, vspmpswitch0_d;
+  riscv::xlen_t                           vspmpswitch1_q, vspmpswitch1_d;
+
   riscv::fcsr_t fcsr_q, fcsr_d;
   // ----------------
   // Assignments
@@ -322,6 +338,43 @@ module csr_regfile
     end
   end else begin
     assign vsstatus_extended = '0;
+  end
+
+  // SPMP CSRs parameterizable address hit logic
+  logic spmpcfg_addr_hit;
+  logic spmpaddr_addr_hit;
+  logic vspmpcfg_addr_hit;
+  logic vspmpaddr_addr_hit;
+
+  if (SPMP_PRESENT) begin
+
+    logic [(SPMP_N_ENTRIES-1)/4:0] spmpcfg_hit_vector;   // NrSPMP/4 spmpcfg registers [0..15]
+    logic [SPMP_N_ENTRIES-1:0]     spmpaddr_hit_vector;  // NrSPMP spmpaddr registers [0..63]
+    logic [(SPMP_N_ENTRIES-1)/4:0] vspmpcfg_hit_vector;  // NrSPMP/4 spmpcfg registers [0..15]
+    logic [SPMP_N_ENTRIES-1:0]     vspmpaddr_hit_vector; // NrSPMP spmpaddr registers [0..63]
+
+    // cfg
+    for (genvar i = 0; i <= (SPMP_N_ENTRIES-1)/4; i++) begin
+      assign spmpcfg_hit_vector[i]  = (conv_csr_addr.address == (riscv::CSR_SPMPCFG0 + i));
+      assign vspmpcfg_hit_vector[i] = (conv_csr_addr.address == (riscv::CSR_VSPMPCFG0 + i));
+    end
+    // addr
+    for (genvar i = 0; i < SPMP_N_ENTRIES; i++) begin
+      assign spmpaddr_hit_vector[i]   = (conv_csr_addr.address == (riscv::CSR_SPMPADDR0 + i));
+      assign vspmpaddr_hit_vector[i]  = (conv_csr_addr.address == (riscv::CSR_VSPMPADDR0 + i));
+    end
+
+    assign  spmpcfg_addr_hit    = (|spmpcfg_hit_vector);
+    assign  spmpaddr_addr_hit   = (|spmpaddr_hit_vector);
+    assign  vspmpcfg_addr_hit   = (|vspmpcfg_hit_vector);
+    assign  vspmpaddr_addr_hit  = (|vspmpaddr_hit_vector);
+  end
+
+  else begin
+    assign spmpcfg_addr_hit     = 1'b0;
+    assign spmpaddr_addr_hit    = 1'b0;
+    assign vspmpcfg_addr_hit    = 1'b0;
+    assign vspmpaddr_addr_hit   = 1'b0;
   end
 
   always_comb begin : csr_read_process
@@ -416,6 +469,124 @@ module csr_regfile
         end else begin
           read_access_exception = 1'b1;
         end
+        // vspmpcfg
+        riscv::CSR_VSPMPCFG0,
+        riscv::CSR_VSPMPCFG1,
+        riscv::CSR_VSPMPCFG2,
+        riscv::CSR_VSPMPCFG3,
+        riscv::CSR_VSPMPCFG4,
+        riscv::CSR_VSPMPCFG5,
+        riscv::CSR_VSPMPCFG6,
+        riscv::CSR_VSPMPCFG7,
+        riscv::CSR_VSPMPCFG8,
+        riscv::CSR_VSPMPCFG9,
+        riscv::CSR_VSPMPCFG10,
+        riscv::CSR_VSPMPCFG11,
+        riscv::CSR_VSPMPCFG12,
+        riscv::CSR_VSPMPCFG13,
+        riscv::CSR_VSPMPCFG14,
+        riscv::CSR_VSPMPCFG15: begin
+          // Odd-indexed cfg CSRs are not accessible in RV64
+          if ((CVA6Cfg.RVH                                           ) && 
+              ((riscv::XLEN == 32) || !csr_addr.csr_decode.address[0]) && 
+              (vspmpcfg_addr_hit                                     )   ) begin
+            automatic int idx = csr_addr.csr_decode.address[3:0];
+            csr_rdata = vspmpcfg_q[(idx << 2) +: riscv::XLEN/8];
+          end
+          else read_access_exception = 1'b1;
+        end
+        // vspmpaddr
+        riscv::CSR_VSPMPADDR0,
+        riscv::CSR_VSPMPADDR1,
+        riscv::CSR_VSPMPADDR2,
+        riscv::CSR_VSPMPADDR3,
+        riscv::CSR_VSPMPADDR4,
+        riscv::CSR_VSPMPADDR5,
+        riscv::CSR_VSPMPADDR6,
+        riscv::CSR_VSPMPADDR7,
+        riscv::CSR_VSPMPADDR8,
+        riscv::CSR_VSPMPADDR9,
+        riscv::CSR_VSPMPADDR10,
+        riscv::CSR_VSPMPADDR11,
+        riscv::CSR_VSPMPADDR12,
+        riscv::CSR_VSPMPADDR13,
+        riscv::CSR_VSPMPADDR14,
+        riscv::CSR_VSPMPADDR15,
+        riscv::CSR_VSPMPADDR16,
+        riscv::CSR_VSPMPADDR17,
+        riscv::CSR_VSPMPADDR18,
+        riscv::CSR_VSPMPADDR19,
+        riscv::CSR_VSPMPADDR20,
+        riscv::CSR_VSPMPADDR21,
+        riscv::CSR_VSPMPADDR22,
+        riscv::CSR_VSPMPADDR23,
+        riscv::CSR_VSPMPADDR24,
+        riscv::CSR_VSPMPADDR25,
+        riscv::CSR_VSPMPADDR26,
+        riscv::CSR_VSPMPADDR27,
+        riscv::CSR_VSPMPADDR28,
+        riscv::CSR_VSPMPADDR29,
+        riscv::CSR_VSPMPADDR30,
+        riscv::CSR_VSPMPADDR31,
+        riscv::CSR_VSPMPADDR32,
+        riscv::CSR_VSPMPADDR33,
+        riscv::CSR_VSPMPADDR34,
+        riscv::CSR_VSPMPADDR35,
+        riscv::CSR_VSPMPADDR36,
+        riscv::CSR_VSPMPADDR37,
+        riscv::CSR_VSPMPADDR38,
+        riscv::CSR_VSPMPADDR39,
+        riscv::CSR_VSPMPADDR40,
+        riscv::CSR_VSPMPADDR41,
+        riscv::CSR_VSPMPADDR42,
+        riscv::CSR_VSPMPADDR43,
+        riscv::CSR_VSPMPADDR44,
+        riscv::CSR_VSPMPADDR45,
+        riscv::CSR_VSPMPADDR46,
+        riscv::CSR_VSPMPADDR47,
+        riscv::CSR_VSPMPADDR48,
+        riscv::CSR_VSPMPADDR49,
+        riscv::CSR_VSPMPADDR50,
+        riscv::CSR_VSPMPADDR51,
+        riscv::CSR_VSPMPADDR52,
+        riscv::CSR_VSPMPADDR53,
+        riscv::CSR_VSPMPADDR54,
+        riscv::CSR_VSPMPADDR55,
+        riscv::CSR_VSPMPADDR56,
+        riscv::CSR_VSPMPADDR57,
+        riscv::CSR_VSPMPADDR58,
+        riscv::CSR_VSPMPADDR59,
+        riscv::CSR_VSPMPADDR60,
+        riscv::CSR_VSPMPADDR61,
+        riscv::CSR_VSPMPADDR62,
+        riscv::CSR_VSPMPADDR63: begin
+          if (CVA6Cfg.RVH && vspmpaddr_addr_hit) begin
+            // index is specified by the last byte of the address
+            automatic int idx = csr_addr.csr_decode.address[5:0] - riscv::CSR_VSPMPADDR0[5:0];
+            // Important: we only support granularity 8 bytes (G=1)
+            // bits vspmpaddr[G-1:0] are all 0s when mode is OFF or TOR
+            // bits vspmpaddr[G-2:0] reads all 1s when mode is NAPOT
+            if (vspmpcfg_q[idx].addr_mode[1] == 1'b1)
+                csr_rdata = (riscv::XLEN == 64)         ? 
+                            {10'b0, vspmpaddr_q[idx]} :
+                            (vspmpaddr_q[idx]);
+            else
+                csr_rdata = (riscv::XLEN == 64)                                 ? 
+                            {10'b0, vspmpaddr_q[idx][riscv::PLEN-3:1], 1'b0}  :
+                            {vspmpaddr_q[idx][riscv::PLEN-3:1], 1'b0};
+          end
+          else read_access_exception = 1'b1;
+        end
+        // vspmpswitch
+        riscv::CSR_VSPMPSWITCH0: begin
+        if (CVA6Cfg.RVH) csr_rdata = vspmpswitch0_q;
+        else read_access_exception = 1'b1;
+        end
+        riscv::CSR_VSPMPSWITCH1: begin
+        // For RV64, only vspmpswitch0 is used
+        if (CVA6Cfg.RVH && (riscv::XLEN == 32)) csr_rdata = vspmpswitch1_q;
+        else read_access_exception = 1'b1;
+        end
         // supervisor registers
         riscv::CSR_SSTATUS: begin
           if (CVA6Cfg.RVS) csr_rdata = mstatus_extended & SMODE_STATUS_READ_MASK[CVA6Cfg.XLEN-1:0];
@@ -461,6 +632,121 @@ module csr_regfile
         end
         riscv::CSR_SENVCFG:
         if (CVA6Cfg.RVS) csr_rdata = '0 | fiom_q;
+        else read_access_exception = 1'b1;
+        // spmpcfg
+        riscv::CSR_SPMPCFG0,
+        riscv::CSR_SPMPCFG1,
+        riscv::CSR_SPMPCFG2,
+        riscv::CSR_SPMPCFG3,
+        riscv::CSR_SPMPCFG4,
+        riscv::CSR_SPMPCFG5,
+        riscv::CSR_SPMPCFG6,
+        riscv::CSR_SPMPCFG7,
+        riscv::CSR_SPMPCFG8,
+        riscv::CSR_SPMPCFG9,
+        riscv::CSR_SPMPCFG10,
+        riscv::CSR_SPMPCFG11,
+        riscv::CSR_SPMPCFG12,
+        riscv::CSR_SPMPCFG13,
+        riscv::CSR_SPMPCFG14,
+        riscv::CSR_SPMPCFG15: begin
+          if ((CVA6Cfg.RVS                                           ) && 
+              ((riscv::XLEN == 32) || !csr_addr.csr_decode.address[0]) && 
+              (spmpcfg_addr_hit                                      )    ) begin
+            automatic int idx = csr_addr.csr_decode.address[3:0];
+            csr_rdata = spmpcfg_q[(idx << 2) +: riscv::XLEN/8];
+          end
+          else read_access_exception = 1'b1;
+        end
+        // spmpaddr
+        riscv::CSR_SPMPADDR0,
+        riscv::CSR_SPMPADDR1,
+        riscv::CSR_SPMPADDR2,
+        riscv::CSR_SPMPADDR3,
+        riscv::CSR_SPMPADDR4,
+        riscv::CSR_SPMPADDR5,
+        riscv::CSR_SPMPADDR6,
+        riscv::CSR_SPMPADDR7,
+        riscv::CSR_SPMPADDR8,
+        riscv::CSR_SPMPADDR9,
+        riscv::CSR_SPMPADDR10,
+        riscv::CSR_SPMPADDR11,
+        riscv::CSR_SPMPADDR12,
+        riscv::CSR_SPMPADDR13,
+        riscv::CSR_SPMPADDR14,
+        riscv::CSR_SPMPADDR15,
+        riscv::CSR_SPMPADDR16,
+        riscv::CSR_SPMPADDR17,
+        riscv::CSR_SPMPADDR18,
+        riscv::CSR_SPMPADDR19,
+        riscv::CSR_SPMPADDR20,
+        riscv::CSR_SPMPADDR21,
+        riscv::CSR_SPMPADDR22,
+        riscv::CSR_SPMPADDR23,
+        riscv::CSR_SPMPADDR24,
+        riscv::CSR_SPMPADDR25,
+        riscv::CSR_SPMPADDR26,
+        riscv::CSR_SPMPADDR27,
+        riscv::CSR_SPMPADDR28,
+        riscv::CSR_SPMPADDR29,
+        riscv::CSR_SPMPADDR30,
+        riscv::CSR_SPMPADDR31,
+        riscv::CSR_SPMPADDR32,
+        riscv::CSR_SPMPADDR33,
+        riscv::CSR_SPMPADDR34,
+        riscv::CSR_SPMPADDR35,
+        riscv::CSR_SPMPADDR36,
+        riscv::CSR_SPMPADDR37,
+        riscv::CSR_SPMPADDR38,
+        riscv::CSR_SPMPADDR39,
+        riscv::CSR_SPMPADDR40,
+        riscv::CSR_SPMPADDR41,
+        riscv::CSR_SPMPADDR42,
+        riscv::CSR_SPMPADDR43,
+        riscv::CSR_SPMPADDR44,
+        riscv::CSR_SPMPADDR45,
+        riscv::CSR_SPMPADDR46,
+        riscv::CSR_SPMPADDR47,
+        riscv::CSR_SPMPADDR48,
+        riscv::CSR_SPMPADDR49,
+        riscv::CSR_SPMPADDR50,
+        riscv::CSR_SPMPADDR51,
+        riscv::CSR_SPMPADDR52,
+        riscv::CSR_SPMPADDR53,
+        riscv::CSR_SPMPADDR54,
+        riscv::CSR_SPMPADDR55,
+        riscv::CSR_SPMPADDR56,
+        riscv::CSR_SPMPADDR57,
+        riscv::CSR_SPMPADDR58,
+        riscv::CSR_SPMPADDR59,
+        riscv::CSR_SPMPADDR60,
+        riscv::CSR_SPMPADDR61,
+        riscv::CSR_SPMPADDR62,
+        riscv::CSR_SPMPADDR63: begin
+          if (CVA6Cfg.RVH && spmpaddr_addr_hit) begin
+            // index is specified by the last byte in the address
+            automatic int idx = csr_addr.csr_decode.address[5:0] - riscv::CSR_SPMPADDR0[5:0];
+            // Important: we only support granularity 8 bytes (G=1)
+            // bits spmpaddr[G-1:0] are all 0s when mode is OFF or TOR
+            // bits spmpaddr[G-2:0] reads all 1s when mode is NAPOT
+            if (spmpcfg_q[idx].addr_mode[1] == 1'b1)
+                csr_rdata = (riscv::XLEN == 64)        ? 
+                            {10'b0, spmpaddr_q[idx]} :
+                            (spmpaddr_q[idx]);
+            else
+                csr_rdata = (riscv::XLEN == 64)                                ? 
+                            {10'b0, spmpaddr_q[idx][riscv::PLEN-3:1], 1'b0}  :
+                            {spmpaddr_q[idx][riscv::PLEN-3:1], 1'b0};
+          end
+          else read_access_exception = 1'b1;
+        end
+        // spmpswitch
+        riscv::CSR_SPMPSWITCH0:
+        if (CVA6Cfg.RVS) csr_rdata = spmpswitch0_q;
+        else read_access_exception = 1'b1;
+        riscv::CSR_SPMPSWITCH1:
+        // For RV64, only spmpswitch0 is used
+        if (CVA6Cfg.RVS && (riscv::XLEN == 32)) csr_rdata = spmpswitch1_q;
         else read_access_exception = 1'b1;
         // hypervisor mode registers
         riscv::CSR_HSTATUS:
@@ -874,6 +1160,10 @@ module csr_regfile
     vscause_d                = vscause_q;
     vstval_d                 = vstval_q;
     vsatp_d                  = vsatp_q;
+    vspmpcfg_d               = vspmpcfg_q;
+    vspmpaddr_d              = vspmpaddr_q;
+    vspmpswitch0_d           = vspmpswitch0_q;
+    vspmpswitch1_d           = vspmpswitch1_q;
 
     sepc_d                   = sepc_q;
     scause_d                 = scause_q;
@@ -882,6 +1172,10 @@ module csr_regfile
     sscratch_d               = sscratch_q;
     stval_d                  = stval_q;
     satp_d                   = satp_q;
+    spmpcfg_d                = spmpcfg_q;
+    spmpaddr_d               = spmpaddr_q;
+    spmpswitch0_d            = spmpswitch0_q;
+    spmpswitch1_d            = spmpswitch1_q;
     hedeleg_d                = hedeleg_q;
     hideleg_d                = hideleg_q;
     hgeie_d                  = hgeie_q;
@@ -1037,6 +1331,123 @@ module csr_regfile
             update_access_exception = 1'b1;
           end
         end
+        //? Need to flush when modifying vSPMP CSRs ??
+        // vspmpcfg
+        riscv::CSR_VSPMPCFG0,
+        riscv::CSR_VSPMPCFG1,
+        riscv::CSR_VSPMPCFG2,
+        riscv::CSR_VSPMPCFG3,
+        riscv::CSR_VSPMPCFG4,
+        riscv::CSR_VSPMPCFG5,
+        riscv::CSR_VSPMPCFG6,
+        riscv::CSR_VSPMPCFG7,
+        riscv::CSR_VSPMPCFG8,
+        riscv::CSR_VSPMPCFG9,
+        riscv::CSR_VSPMPCFG10,
+        riscv::CSR_VSPMPCFG11,
+        riscv::CSR_VSPMPCFG12,
+        riscv::CSR_VSPMPCFG13,
+        riscv::CSR_VSPMPCFG14,
+        riscv::CSR_VSPMPCFG15: begin
+          // Odd-indexed cfg CSRs are not accessible in RV64
+          if ((CVA6Cfg.RVH                                           ) && 
+              ((riscv::XLEN == 32) || !csr_addr.csr_decode.address[0]) && 
+              (vspmpcfg_addr_hit                                     )   ) begin
+            automatic int idx = csr_addr.csr_decode.address[3:0];
+            for (int i = 0; i < (riscv::XLEN/8); i++) begin
+              vspmpcfg_d[i + idx*4] = csr_wdata[i*8+:8];
+            end
+            // this instruction has side-effects
+            // flush_o = 1'b1;
+          end
+          else update_access_exception = 1'b1;
+        end
+        // vspmpaddr
+        riscv::CSR_VSPMPADDR0,
+        riscv::CSR_VSPMPADDR1,
+        riscv::CSR_VSPMPADDR2,
+        riscv::CSR_VSPMPADDR3,
+        riscv::CSR_VSPMPADDR4,
+        riscv::CSR_VSPMPADDR5,
+        riscv::CSR_VSPMPADDR6,
+        riscv::CSR_VSPMPADDR7,
+        riscv::CSR_VSPMPADDR8,
+        riscv::CSR_VSPMPADDR9,
+        riscv::CSR_VSPMPADDR10,
+        riscv::CSR_VSPMPADDR11,
+        riscv::CSR_VSPMPADDR12,
+        riscv::CSR_VSPMPADDR13,
+        riscv::CSR_VSPMPADDR14,
+        riscv::CSR_VSPMPADDR15,
+        riscv::CSR_VSPMPADDR16,
+        riscv::CSR_VSPMPADDR17,
+        riscv::CSR_VSPMPADDR18,
+        riscv::CSR_VSPMPADDR19,
+        riscv::CSR_VSPMPADDR20,
+        riscv::CSR_VSPMPADDR21,
+        riscv::CSR_VSPMPADDR22,
+        riscv::CSR_VSPMPADDR23,
+        riscv::CSR_VSPMPADDR24,
+        riscv::CSR_VSPMPADDR25,
+        riscv::CSR_VSPMPADDR26,
+        riscv::CSR_VSPMPADDR27,
+        riscv::CSR_VSPMPADDR28,
+        riscv::CSR_VSPMPADDR29,
+        riscv::CSR_VSPMPADDR30,
+        riscv::CSR_VSPMPADDR31,
+        riscv::CSR_VSPMPADDR32,
+        riscv::CSR_VSPMPADDR33,
+        riscv::CSR_VSPMPADDR34,
+        riscv::CSR_VSPMPADDR35,
+        riscv::CSR_VSPMPADDR36,
+        riscv::CSR_VSPMPADDR37,
+        riscv::CSR_VSPMPADDR38,
+        riscv::CSR_VSPMPADDR39,
+        riscv::CSR_VSPMPADDR40,
+        riscv::CSR_VSPMPADDR41,
+        riscv::CSR_VSPMPADDR42,
+        riscv::CSR_VSPMPADDR43,
+        riscv::CSR_VSPMPADDR44,
+        riscv::CSR_VSPMPADDR45,
+        riscv::CSR_VSPMPADDR46,
+        riscv::CSR_VSPMPADDR47,
+        riscv::CSR_VSPMPADDR48,
+        riscv::CSR_VSPMPADDR49,
+        riscv::CSR_VSPMPADDR50,
+        riscv::CSR_VSPMPADDR51,
+        riscv::CSR_VSPMPADDR52,
+        riscv::CSR_VSPMPADDR53,
+        riscv::CSR_VSPMPADDR54,
+        riscv::CSR_VSPMPADDR55,
+        riscv::CSR_VSPMPADDR56,
+        riscv::CSR_VSPMPADDR57,
+        riscv::CSR_VSPMPADDR58,
+        riscv::CSR_VSPMPADDR59,
+        riscv::CSR_VSPMPADDR60,
+        riscv::CSR_VSPMPADDR61,
+        riscv::CSR_VSPMPADDR62,
+        riscv::CSR_VSPMPADDR63: begin
+        if (CVA6Cfg.RVH && vspmpaddr_addr_hit) begin
+          // index is specified by the last byte in the address
+          automatic int idx = csr_addr.csr_decode.address[5:0] - riscv::CSR_VSPMPADDR0[5:0];
+          vspmpaddr_d[idx] = csr_wdata[riscv::PLEN-3:0];
+          // this instruction has side-effects
+          // flush_o = 1'b1;
+        end
+        else update_access_exception = 1'b1;
+        end
+        // vspmpswitch
+        riscv::CSR_VSPMPSWITCH0:
+        if (CVA6Cfg.RVH) begin 
+          vspmpswitch0_d = csr_wdata;
+        end
+        else update_access_exception = 1'b1;
+        riscv::CSR_VSPMPSWITCH1:
+        // For RV64, only vspmpswitch0 is used
+        if (CVA6Cfg.RVH && (riscv::XLEN == 32)) begin
+          vspmpswitch1_d = csr_wdata;
+        end
+        else update_access_exception = 1'b1;
         // sstatus is a subset of mstatus - mask it accordingly
         riscv::CSR_SSTATUS: begin
           if (CVA6Cfg.RVS) begin
@@ -1119,6 +1530,124 @@ module csr_regfile
         end
         riscv::CSR_SENVCFG:
         if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
+        else update_access_exception = 1'b1;
+        //? Need to flush when modifying SPMP CSRs?
+        // spmpcfg
+        // SPMP does not have locked logic
+        riscv::CSR_SPMPCFG0,
+        riscv::CSR_SPMPCFG1,
+        riscv::CSR_SPMPCFG2,
+        riscv::CSR_SPMPCFG3,
+        riscv::CSR_SPMPCFG4,
+        riscv::CSR_SPMPCFG5,
+        riscv::CSR_SPMPCFG6,
+        riscv::CSR_SPMPCFG7,
+        riscv::CSR_SPMPCFG8,
+        riscv::CSR_SPMPCFG9,
+        riscv::CSR_SPMPCFG10,
+        riscv::CSR_SPMPCFG11,
+        riscv::CSR_SPMPCFG12,
+        riscv::CSR_SPMPCFG13,
+        riscv::CSR_SPMPCFG14,
+        riscv::CSR_SPMPCFG15: begin
+          // Odd-indexed cfg CSRs are not accessible in RV64
+          if ((CVA6Cfg.RVS                                           ) && 
+              ((riscv::XLEN == 32) || !csr_addr.csr_decode.address[0]) && 
+              (spmpcfg_addr_hit                                      )   ) begin
+            automatic int idx = csr_addr.csr_decode.address[3:0];
+            for (int i = 0; i < (riscv::XLEN/8); i++) begin
+              spmpcfg_d[i + idx*4] = csr_wdata[i*8+:8];
+            end
+            // this instruction has side-effects
+            // flush_o = 1'b1;
+          end
+          else update_access_exception = 1'b1;
+        end
+        // spmpaddr
+        riscv::CSR_SPMPADDR0,
+        riscv::CSR_SPMPADDR1,
+        riscv::CSR_SPMPADDR2,
+        riscv::CSR_SPMPADDR3,
+        riscv::CSR_SPMPADDR4,
+        riscv::CSR_SPMPADDR5,
+        riscv::CSR_SPMPADDR6,
+        riscv::CSR_SPMPADDR7,
+        riscv::CSR_SPMPADDR8,
+        riscv::CSR_SPMPADDR9,
+        riscv::CSR_SPMPADDR10,
+        riscv::CSR_SPMPADDR11,
+        riscv::CSR_SPMPADDR12,
+        riscv::CSR_SPMPADDR13,
+        riscv::CSR_SPMPADDR14,
+        riscv::CSR_SPMPADDR15,
+        riscv::CSR_SPMPADDR16,
+        riscv::CSR_SPMPADDR17,
+        riscv::CSR_SPMPADDR18,
+        riscv::CSR_SPMPADDR19,
+        riscv::CSR_SPMPADDR20,
+        riscv::CSR_SPMPADDR21,
+        riscv::CSR_SPMPADDR22,
+        riscv::CSR_SPMPADDR23,
+        riscv::CSR_SPMPADDR24,
+        riscv::CSR_SPMPADDR25,
+        riscv::CSR_SPMPADDR26,
+        riscv::CSR_SPMPADDR27,
+        riscv::CSR_SPMPADDR28,
+        riscv::CSR_SPMPADDR29,
+        riscv::CSR_SPMPADDR30,
+        riscv::CSR_SPMPADDR31,
+        riscv::CSR_SPMPADDR32,
+        riscv::CSR_SPMPADDR33,
+        riscv::CSR_SPMPADDR34,
+        riscv::CSR_SPMPADDR35,
+        riscv::CSR_SPMPADDR36,
+        riscv::CSR_SPMPADDR37,
+        riscv::CSR_SPMPADDR38,
+        riscv::CSR_SPMPADDR39,
+        riscv::CSR_SPMPADDR40,
+        riscv::CSR_SPMPADDR41,
+        riscv::CSR_SPMPADDR42,
+        riscv::CSR_SPMPADDR43,
+        riscv::CSR_SPMPADDR44,
+        riscv::CSR_SPMPADDR45,
+        riscv::CSR_SPMPADDR46,
+        riscv::CSR_SPMPADDR47,
+        riscv::CSR_SPMPADDR48,
+        riscv::CSR_SPMPADDR49,
+        riscv::CSR_SPMPADDR50,
+        riscv::CSR_SPMPADDR51,
+        riscv::CSR_SPMPADDR52,
+        riscv::CSR_SPMPADDR53,
+        riscv::CSR_SPMPADDR54,
+        riscv::CSR_SPMPADDR55,
+        riscv::CSR_SPMPADDR56,
+        riscv::CSR_SPMPADDR57,
+        riscv::CSR_SPMPADDR58,
+        riscv::CSR_SPMPADDR59,
+        riscv::CSR_SPMPADDR60,
+        riscv::CSR_SPMPADDR61,
+        riscv::CSR_SPMPADDR62,
+        riscv::CSR_SPMPADDR63: begin
+        if (CVA6Cfg.RVS && spmpaddr_addr_hit) begin
+          // index is specified by the last byte in the address
+          automatic int idx = csr_addr.csr_decode.address[5:0] - riscv::CSR_SPMPADDR0[5:0];
+          spmpaddr_d[idx] = csr_wdata[riscv::PLEN-3:0];
+          // this instruction has side-effects
+          // flush_o = 1'b1;
+        end
+        else update_access_exception = 1'b1;
+        end
+        // spmpswitch
+        riscv::CSR_SPMPSWITCH0:
+        if (CVA6Cfg.RVS) begin 
+          spmpswitch0_d = csr_wdata;
+        end
+        else update_access_exception = 1'b1;
+        riscv::CSR_SPMPSWITCH1:
+        // For RV64, only spmpswitch0 is used
+        if (CVA6Cfg.RVS && (riscv::XLEN == 32)) begin 
+          spmpswitch1_d = csr_wdata;
+        end
         else update_access_exception = 1'b1;
         //hypervisor mode registers
         riscv::CSR_HSTATUS: begin
@@ -2259,6 +2788,12 @@ module csr_regfile
   assign single_step_o = dcsr_q.step;
   assign mcountinhibit_o = {{29 - MHPMCounterNum{1'b0}}, mcountinhibit_q};
 
+  assign spmpcfg_o   = (SPMP_PRESENT && CVA6Cfg.RVS) ? (spmpcfg_q) : ('0);
+  assign spmpaddr_o  = (SPMP_PRESENT && CVA6Cfg.RVS) ? (spmpaddr_q) : ('0);
+
+  assign vspmpcfg_o  = (SPMP_PRESENT && CVA6Cfg.RVH) ? (vspmpcfg_q) : ('0);
+  assign vspmpaddr_o = (SPMP_PRESENT && CVA6Cfg.RVH) ? (vspmpaddr_q) : ('0);
+
   // sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
@@ -2294,15 +2829,22 @@ module csr_regfile
       acc_cons_q       <= {{CVA6Cfg.XLEN - 1{1'b0}}, CVA6Cfg.EnableAccelerator};
       // supervisor mode registers
       if (CVA6Cfg.RVS) begin
-        medeleg_q    <= {CVA6Cfg.XLEN{1'b0}};
-        mideleg_q    <= {CVA6Cfg.XLEN{1'b0}};
-        sepc_q       <= {CVA6Cfg.XLEN{1'b0}};
-        scause_q     <= {CVA6Cfg.XLEN{1'b0}};
-        stvec_q      <= {CVA6Cfg.XLEN{1'b0}};
-        scounteren_q <= {CVA6Cfg.XLEN{1'b0}};
-        sscratch_q   <= {CVA6Cfg.XLEN{1'b0}};
-        stval_q      <= {CVA6Cfg.XLEN{1'b0}};
-        satp_q       <= {CVA6Cfg.XLEN{1'b0}};
+        medeleg_q       <= {CVA6Cfg.XLEN{1'b0}};
+        mideleg_q       <= {CVA6Cfg.XLEN{1'b0}};
+        sepc_q          <= {CVA6Cfg.XLEN{1'b0}};
+        scause_q        <= {CVA6Cfg.XLEN{1'b0}};
+        stvec_q         <= {CVA6Cfg.XLEN{1'b0}};
+        scounteren_q    <= {CVA6Cfg.XLEN{1'b0}};
+        sscratch_q      <= {CVA6Cfg.XLEN{1'b0}};
+        stval_q         <= {CVA6Cfg.XLEN{1'b0}};
+        satp_q          <= {CVA6Cfg.XLEN{1'b0}};
+        for (int i = 0; i < SPMP_N_ENTRIES; i++) begin
+          spmpcfg_q[i]  <= riscv::spmpcfg_t'(CVA6Cfg.SPMPCfgRstVal[i]);
+          spmpaddr_q[i] <= riscv::spmpaddr_t'(CVA6Cfg.SPMPAddrRstVal[i][riscv::PLEN-3:0]);
+        end
+
+        spmpswitch0_q   <= '0;
+        spmpswitch1_q   <= '0;
       end
 
       if (CVA6Cfg.RVH) begin
@@ -2326,6 +2868,15 @@ module csr_regfile
         vstval_q                 <= {CVA6Cfg.XLEN{1'b0}};
         vsatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
         en_ld_st_g_translation_q <= 1'b0;
+
+        // Assumed same reset value for SPMP and vSPMP
+        for (int i = 0; i < SPMP_N_ENTRIES; i++) begin
+          vspmpcfg_q[i]          <= riscv::spmpcfg_t'(CVA6Cfg.SPMPCfgRstVal[i]);
+          vspmpaddr_q[i]         <= riscv::spmpaddr_t'(CVA6Cfg.SPMPAddrRstVal[i][riscv::PLEN-3:0]);
+        end
+
+        vspmpswitch0_q           <= '0;
+        vspmpswitch1_q           <= '0;
       end
       // timer and counters
       cycle_q                <= 64'b0;
@@ -2374,15 +2925,27 @@ module csr_regfile
       acc_cons_q      <= acc_cons_d;
       // supervisor mode registers
       if (CVA6Cfg.RVS) begin
-        medeleg_q    <= medeleg_d;
-        mideleg_q    <= mideleg_d;
-        sepc_q       <= sepc_d;
-        scause_q     <= scause_d;
-        stvec_q      <= stvec_d;
-        scounteren_q <= scounteren_d;
-        sscratch_q   <= sscratch_d;
+        medeleg_q           <= medeleg_d;
+        mideleg_q           <= mideleg_d;
+        sepc_q              <= sepc_d;
+        scause_q            <= scause_d;
+        stvec_q             <= stvec_d;
+        scounteren_q        <= scounteren_d;
+        sscratch_q          <= sscratch_d;
         if (CVA6Cfg.TvalEn) stval_q <= stval_d;
         satp_q <= satp_d;
+        for(int i = 0; i < SPMP_N_ENTRIES; i++) begin
+          // We only support >=8-byte granularity, NA4 is disabled
+          if(spmpcfg_d[i].addr_mode != riscv::NA4)
+            spmpcfg_q[i]    <= spmpcfg_d[i];
+          else
+            spmpcfg_q[i]    <= spmpcfg_q[i];
+
+          spmpaddr_q[i]     <= spmpaddr_d[i];
+        end
+
+        spmpswitch0_q       <= spmpswitch0_d;
+        spmpswitch1_q       <= spmpswitch1_d;
       end
       if (CVA6Cfg.RVH) begin
         v_q                      <= v_d;
@@ -2406,6 +2969,19 @@ module csr_regfile
         vstval_q                 <= vstval_d;
         vsatp_q                  <= vsatp_d;
         en_ld_st_g_translation_q <= en_ld_st_g_translation_d;
+
+        for(int i = 0; i < SPMP_N_ENTRIES; i++) begin
+          // We only support >=8-byte granularity, NA4 is disabled
+          if(vspmpcfg_d[i].addr_mode != riscv::NA4)
+            vspmpcfg_q[i]        <= vspmpcfg_d[i];
+          else 
+            vspmpcfg_q[i]        <= vspmpcfg_q[i];
+
+          vspmpaddr_q[i]         <= vspmpaddr_d[i];
+        end
+        
+        vspmpswitch0_q           <= vspmpswitch0_d;
+        vspmpswitch1_q           <= vspmpswitch1_d;
       end
       // timer and counters
       cycle_q                <= cycle_d;

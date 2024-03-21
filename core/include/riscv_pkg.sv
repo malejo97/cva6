@@ -405,6 +405,88 @@ package riscv;
     CSR_VSTVAL           = 12'h243,
     CSR_VSIP             = 12'h244,
     CSR_VSATP            = 12'h280,
+    CSR_VSPMPCFG0        = 12'hA00,   // vSPMP Cfg
+    CSR_VSPMPCFG1        = 12'hA01,
+    CSR_VSPMPCFG2        = 12'hA02,
+    CSR_VSPMPCFG3        = 12'hA03,
+    CSR_VSPMPCFG4        = 12'hA04,
+    CSR_VSPMPCFG5        = 12'hA05,
+    CSR_VSPMPCFG6        = 12'hA06,
+    CSR_VSPMPCFG7        = 12'hA07,
+    CSR_VSPMPCFG8        = 12'hA08,
+    CSR_VSPMPCFG9        = 12'hA09,
+    CSR_VSPMPCFG10       = 12'hA0a,
+    CSR_VSPMPCFG11       = 12'hA0b,
+    CSR_VSPMPCFG12       = 12'hA0c,
+    CSR_VSPMPCFG13       = 12'hA0d,
+    CSR_VSPMPCFG14       = 12'hA0e,
+    CSR_VSPMPCFG15       = 12'hA0f,
+    CSR_VSPMPADDR0       = 12'hA10,   // vSPMP Addr
+    CSR_VSPMPADDR1       = 12'hA11,
+    CSR_VSPMPADDR2       = 12'hA12,
+    CSR_VSPMPADDR3       = 12'hA13,
+    CSR_VSPMPADDR4       = 12'hA14,
+    CSR_VSPMPADDR5       = 12'hA15,
+    CSR_VSPMPADDR6       = 12'hA16,
+    CSR_VSPMPADDR7       = 12'hA17,
+    CSR_VSPMPADDR8       = 12'hA18,
+    CSR_VSPMPADDR9       = 12'hA19,
+    CSR_VSPMPADDR10      = 12'hA1a,
+    CSR_VSPMPADDR11      = 12'hA1b,
+    CSR_VSPMPADDR12      = 12'hA1c,
+    CSR_VSPMPADDR13      = 12'hA1d,
+    CSR_VSPMPADDR14      = 12'hA1e,
+    CSR_VSPMPADDR15      = 12'hA1f,
+    CSR_VSPMPADDR16      = 12'hA20,
+    CSR_VSPMPADDR17      = 12'hA21,
+    CSR_VSPMPADDR18      = 12'hA22,
+    CSR_VSPMPADDR19      = 12'hA23,
+    CSR_VSPMPADDR20      = 12'hA24,
+    CSR_VSPMPADDR21      = 12'hA25,
+    CSR_VSPMPADDR22      = 12'hA26,
+    CSR_VSPMPADDR23      = 12'hA27,
+    CSR_VSPMPADDR24      = 12'hA28,
+    CSR_VSPMPADDR25      = 12'hA29,
+    CSR_VSPMPADDR26      = 12'hA2a,
+    CSR_VSPMPADDR27      = 12'hA2b,
+    CSR_VSPMPADDR28      = 12'hA2c,
+    CSR_VSPMPADDR29      = 12'hA2d,
+    CSR_VSPMPADDR30      = 12'hA2e,
+    CSR_VSPMPADDR31      = 12'hA2f,
+    CSR_VSPMPADDR32      = 12'hA30,
+    CSR_VSPMPADDR33      = 12'hA31,
+    CSR_VSPMPADDR34      = 12'hA32,
+    CSR_VSPMPADDR35      = 12'hA33,
+    CSR_VSPMPADDR36      = 12'hA34,
+    CSR_VSPMPADDR37      = 12'hA35,
+    CSR_VSPMPADDR38      = 12'hA36,
+    CSR_VSPMPADDR39      = 12'hA37,
+    CSR_VSPMPADDR40      = 12'hA38,
+    CSR_VSPMPADDR41      = 12'hA39,
+    CSR_VSPMPADDR42      = 12'hA3a,
+    CSR_VSPMPADDR43      = 12'hA3b,
+    CSR_VSPMPADDR44      = 12'hA3c,
+    CSR_VSPMPADDR45      = 12'hA3d,
+    CSR_VSPMPADDR46      = 12'hA3e,
+    CSR_VSPMPADDR47      = 12'hA3f,
+    CSR_VSPMPADDR48      = 12'hA40,
+    CSR_VSPMPADDR49      = 12'hA41,
+    CSR_VSPMPADDR50      = 12'hA42,
+    CSR_VSPMPADDR51      = 12'hA43,
+    CSR_VSPMPADDR52      = 12'hA44,
+    CSR_VSPMPADDR53      = 12'hA45,
+    CSR_VSPMPADDR54      = 12'hA46,
+    CSR_VSPMPADDR55      = 12'hA47,
+    CSR_VSPMPADDR56      = 12'hA48,
+    CSR_VSPMPADDR57      = 12'hA49,
+    CSR_VSPMPADDR58      = 12'hA4a,
+    CSR_VSPMPADDR59      = 12'hA4b,
+    CSR_VSPMPADDR60      = 12'hA4c,
+    CSR_VSPMPADDR61      = 12'hA4d,
+    CSR_VSPMPADDR62      = 12'hA4e,
+    CSR_VSPMPADDR63      = 12'hA4f,
+    CSR_VSPMPSWITCH0     = 12'hA50,   // vSPMP Switch
+    CSR_VSPMPSWITCH1     = 12'hA51,
     // Supervisor Mode CSRs
     CSR_SSTATUS          = 12'h100,
     CSR_SIE              = 12'h104,
@@ -417,6 +499,88 @@ package riscv;
     CSR_STVAL            = 12'h143,
     CSR_SIP              = 12'h144,
     CSR_SATP             = 12'h180,
+    CSR_SPMPCFG0         = 12'h500,   // SPMP Cfg
+    CSR_SPMPCFG1         = 12'h501,
+    CSR_SPMPCFG2         = 12'h502,
+    CSR_SPMPCFG3         = 12'h503,
+    CSR_SPMPCFG4         = 12'h504,
+    CSR_SPMPCFG5         = 12'h505,
+    CSR_SPMPCFG6         = 12'h506,
+    CSR_SPMPCFG7         = 12'h507,
+    CSR_SPMPCFG8         = 12'h508,
+    CSR_SPMPCFG9         = 12'h509,
+    CSR_SPMPCFG10        = 12'h50A,
+    CSR_SPMPCFG11        = 12'h50B,
+    CSR_SPMPCFG12        = 12'h50C,
+    CSR_SPMPCFG13        = 12'h50D,
+    CSR_SPMPCFG14        = 12'h50E,
+    CSR_SPMPCFG15        = 12'h50F,
+    CSR_SPMPADDR0        = 12'h510,   // SPMP Addr
+    CSR_SPMPADDR1        = 12'h511,
+    CSR_SPMPADDR2        = 12'h512,
+    CSR_SPMPADDR3        = 12'h513,
+    CSR_SPMPADDR4        = 12'h514,
+    CSR_SPMPADDR5        = 12'h515,
+    CSR_SPMPADDR6        = 12'h516,
+    CSR_SPMPADDR7        = 12'h517,
+    CSR_SPMPADDR8        = 12'h518,
+    CSR_SPMPADDR9        = 12'h519,
+    CSR_SPMPADDR10       = 12'h51A,
+    CSR_SPMPADDR11       = 12'h51B,
+    CSR_SPMPADDR12       = 12'h51C,
+    CSR_SPMPADDR13       = 12'h51D,
+    CSR_SPMPADDR14       = 12'h51E,
+    CSR_SPMPADDR15       = 12'h51F,
+    CSR_SPMPADDR16       = 12'h520,
+    CSR_SPMPADDR17       = 12'h521,
+    CSR_SPMPADDR18       = 12'h522,
+    CSR_SPMPADDR19       = 12'h523,
+    CSR_SPMPADDR20       = 12'h524,
+    CSR_SPMPADDR21       = 12'h525,
+    CSR_SPMPADDR22       = 12'h526,
+    CSR_SPMPADDR23       = 12'h527,
+    CSR_SPMPADDR24       = 12'h528,
+    CSR_SPMPADDR25       = 12'h529,
+    CSR_SPMPADDR26       = 12'h52A,
+    CSR_SPMPADDR27       = 12'h52B,
+    CSR_SPMPADDR28       = 12'h52C,
+    CSR_SPMPADDR29       = 12'h52D,
+    CSR_SPMPADDR30       = 12'h52E,
+    CSR_SPMPADDR31       = 12'h52F,
+    CSR_SPMPADDR32       = 12'h530,
+    CSR_SPMPADDR33       = 12'h531,
+    CSR_SPMPADDR34       = 12'h532,
+    CSR_SPMPADDR35       = 12'h533,
+    CSR_SPMPADDR36       = 12'h534,
+    CSR_SPMPADDR37       = 12'h535,
+    CSR_SPMPADDR38       = 12'h536,
+    CSR_SPMPADDR39       = 12'h537,
+    CSR_SPMPADDR40       = 12'h538,
+    CSR_SPMPADDR41       = 12'h539,
+    CSR_SPMPADDR42       = 12'h53A,
+    CSR_SPMPADDR43       = 12'h53B,
+    CSR_SPMPADDR44       = 12'h53C,
+    CSR_SPMPADDR45       = 12'h53D,
+    CSR_SPMPADDR46       = 12'h53E,
+    CSR_SPMPADDR47       = 12'h53F,
+    CSR_SPMPADDR48       = 12'h540,
+    CSR_SPMPADDR49       = 12'h541,
+    CSR_SPMPADDR50       = 12'h542,
+    CSR_SPMPADDR51       = 12'h543,
+    CSR_SPMPADDR52       = 12'h544,
+    CSR_SPMPADDR53       = 12'h545,
+    CSR_SPMPADDR54       = 12'h546,
+    CSR_SPMPADDR55       = 12'h547,
+    CSR_SPMPADDR56       = 12'h548,
+    CSR_SPMPADDR57       = 12'h549,
+    CSR_SPMPADDR58       = 12'h54A,
+    CSR_SPMPADDR59       = 12'h54B,
+    CSR_SPMPADDR60       = 12'h54C,
+    CSR_SPMPADDR61       = 12'h54D,
+    CSR_SPMPADDR62       = 12'h54E,
+    CSR_SPMPADDR63       = 12'h54F,
+    CSR_SPMPSWITCH0      = 12'h550,   // SPMP Switch
+    CSR_SPMPSWITCH1      = 12'h551,
     // Hypervisor-extended Supervisor Mode CSRs
     CSR_HSTATUS          = 12'h600,
     CSR_HEDELEG          = 12'h602,
@@ -778,6 +942,21 @@ package riscv;
   } pmpcfg_t;
 
   // -----
+  // SPMP
+  // -----
+
+  // SPMP configuration register
+  typedef struct packed {
+      logic            s_mode;        // S-mode /U-mode rule
+      logic [1:0]      reserved;
+      pmp_addr_mode_t  addr_mode;     // Off, TOR, NA4, NAPOT
+      pmpcfg_access_t  access_perm;   // [x, w r]
+  } spmpcfg_t;
+
+  // SPMP address register
+  typedef logic[riscv::PLEN-3:0] spmpaddr_t;
+
+  // -----
   // Debug
   // -----
   typedef struct packed {
@@ -893,7 +1072,7 @@ package riscv;
     csr_t ret;
     ret = csr_addr;
     unique case (csr_addr.address) inside
-      [CSR_SSTATUS : CSR_STVEC], [CSR_SSCRATCH : CSR_SATP]: begin
+      [CSR_SSTATUS : CSR_STVEC], [CSR_SSCRATCH : CSR_SATP], [CSR_SPMPCFG0 : CSR_SPMPSWITCH1]: begin
         if (v) begin
           ret.csr_decode.priv_lvl = PRIV_LVL_HS;
         end
