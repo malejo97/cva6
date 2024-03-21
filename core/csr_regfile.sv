@@ -306,13 +306,13 @@ module csr_regfile
 
   riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]   spmpcfg_q, spmpcfg_d;
   riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]  spmpaddr_q, spmpaddr_d;
-  riscv::xlen_t                           spmpswitch0_q, spmpswitch0_d;
-  riscv::xlen_t                           spmpswitch1_q, spmpswitch1_d;
+  logic [CVA6Cfg.XLEN-1:0]                spmpswitch0_q, spmpswitch0_d;
+  logic [CVA6Cfg.XLEN-1:0]                spmpswitch1_q, spmpswitch1_d;
 
   riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]   vspmpcfg_q, vspmpcfg_d;
   riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]  vspmpaddr_q, vspmpaddr_d;
-  riscv::xlen_t                           vspmpswitch0_q, vspmpswitch0_d;
-  riscv::xlen_t                           vspmpswitch1_q, vspmpswitch1_d;
+  logic [CVA6Cfg.XLEN-1:0]                vspmpswitch0_q, vspmpswitch0_d;
+  logic [CVA6Cfg.XLEN-1:0]                vspmpswitch1_q, vspmpswitch1_d;
 
   riscv::fcsr_t fcsr_q, fcsr_d;
   // ----------------

@@ -436,7 +436,7 @@ module load_store_unit
                                 {{8{1'b0}}, mmu_vaddr_plen        }:
                                 (mmu_vaddr_plen[CVA6Cfg.VLEN-1:0] );
       lsu_excep_gpaddr        = (CVA6Cfg.VLEN > CVA6Cfg.PLEN      )? 
-                                (mmu_vaddr_plen[CVA6Cfg.-1:0]     ):
+                                (mmu_vaddr_plen[CVA6Cfg.GPLEN-1:0]):
                                 {{2{1'b0}}, mmu_vaddr_plen        };
 
       // Set SPMP parameters according to the source of the request
