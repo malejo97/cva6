@@ -518,6 +518,7 @@ module cva6
   logic [31:0] mcountinhibit_csr_perf;
   riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]   spmpcfg, vspmpcfg;
   riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]  spmpaddr, vspmpaddr;
+  logic [63:0]                            spmpswitch, vspmpswitch;
   // ----------------------------
   // Performance Counters <-> *
   // ----------------------------
@@ -939,8 +940,10 @@ module cva6
       // SPMP
       .spmpcfg_i               (spmpcfg),
       .spmpaddr_i              (spmpaddr),
+      .spmpswitch_i            (spmpswitch),
       .vspmpcfg_i              (vspmpcfg),
       .vspmpaddr_i             (vspmpaddr),
+      .vspmpswitch_i           (vspmpswitch), 
       //RVFI
       .rvfi_lsu_ctrl_o         (rvfi_lsu_ctrl),
       .rvfi_mem_paddr_o        (rvfi_mem_paddr)
@@ -1073,8 +1076,11 @@ module cva6
       .mcountinhibit_o         (mcountinhibit_csr_perf),
       .spmpcfg_o               (spmpcfg),
       .spmpaddr_o              (spmpaddr),
+      .spmpswitch_o            (spmpswitch),
       .vspmpcfg_o              (vspmpcfg),
       .vspmpaddr_o             (vspmpaddr),
+      .vspmpswitch_o           (vspmpswitch),
+
       //RVFI
       .rvfi_csr_o              (rvfi_csr),
       .debug_req_i,

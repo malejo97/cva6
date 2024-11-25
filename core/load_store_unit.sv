@@ -151,10 +151,12 @@ module load_store_unit
     // PMP address - CSR_REGFILE
     input  logic           [15:0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
     // SPMP
-    input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]    spmpcfg_i,
-    input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]   spmpaddr_i,
-    input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]    vspmpcfg_i,
-    input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]   vspmpaddr_i,
+    input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]     spmpcfg_i,
+    input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]    spmpaddr_i,
+    input logic [63:0]                              spmpswitch_i,
+    input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]     vspmpcfg_i,
+    input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]    vspmpaddr_i,
+    input logic [63:0]                              vspmpswitch_i,
 
     // RVFI inforamtion - RVFI
     output lsu_ctrl_t                    rvfi_lsu_ctrl_o,
@@ -547,7 +549,7 @@ module load_store_unit
           
         // vSPMP
         spmp_hyp #(
-          .is_vSPMP           ( 1                     ),     
+          .is_vSPMP           ( 1                     ),
           .PLEN               ( CVA6Cfg.PLEN          ),
           // .NR_ENTRIES         ( 0 )
           .NR_ENTRIES         ( CVA6Cfg.NrSPMPEntries )
@@ -565,13 +567,14 @@ module load_store_unit
           .mmu_enabled_i      ( 1'b0              ),
           .spmpcfg_i          ( vspmpcfg_i        ),
           .spmpaddr_i         ( vspmpaddr_i       ),
+          .spmpswitch_i       ( vspmpswitch_i     ),
           // Output
           .allow_o            ( vspmp_allow       )
         );
 
         // Hybrid SPMP
         spmp_hyp #(
-          .is_vSPMP           ( 0                     ),     
+          .is_vSPMP           ( 0                     ),
           .PLEN               ( CVA6Cfg.PLEN          ),
           // .NR_ENTRIES         ( 0 )
           .NR_ENTRIES         ( CVA6Cfg.NrSPMPEntries )
@@ -589,6 +592,7 @@ module load_store_unit
           .mmu_enabled_i      ( 1'b0              ),
           .spmpcfg_i          ( spmpcfg_i         ),
           .spmpaddr_i         ( spmpaddr_i        ),
+          .spmpswitch_i       ( spmpswitch_i      ),
           // Output
           .allow_o            ( spmp_allow        )
         );
@@ -612,6 +616,7 @@ module load_store_unit
           .mmu_enabled_i      ( 1'b0              ),
           .spmpcfg_i          ( spmpcfg_i         ),
           .spmpaddr_i         ( spmpaddr_i        ),
+          .spmpswitch_i       ( spmpswitch_i      ),
           // Output
           .allow_o            ( spmp_allow        )
         );

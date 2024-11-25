@@ -34,6 +34,7 @@ module spmp
     input  logic                                    mmu_enabled_i,
     input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]     spmpcfg_i,
     input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]    spmpaddr_i,
+    input  logic [63:0]                             spmpswitch_i,
     // Output
     output logic                                    allow_o
 );
@@ -96,7 +97,7 @@ module spmp
                 // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
                 for (i = 0; i < NR_ENTRIES; i++) begin
 
-                    if (match[i]) begin
+                    if (match[i] && spmpswitch_i[i]) begin
                         
                         // Entry matches. Enforce checks
                         enforce         = ( ((access_type_i & spmpcfg_i[i].access_perm) == access_type_i) |     // Matching access permissions

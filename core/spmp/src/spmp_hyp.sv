@@ -53,6 +53,7 @@ module spmp_hyp
     input  logic                                    mmu_enabled_i,  // MMU enabled, SPMP disabled
     input  riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]    spmpcfg_i,      // vSPMP CSRs if is_vSPMP = 1
     input  riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]   spmpaddr_i,
+    input  logic [63:0]                             spmpswitch_i,
     // Output
     output logic                    allow_o
 );
@@ -125,7 +126,7 @@ module spmp_hyp
             assign final_smode  = access_S & v_i;
             assign final_umode  = access_U & v_i;
             // Bypass non-guest accesses
-            assign bypass_check = access_M | access_HS | !v_i;
+            assign bypass_check = (access_M) | (access_HS) | (~v_i);
         end : gen_vspmp
 
         // Act as SPMP / hgSPMP
@@ -134,7 +135,7 @@ module spmp_hyp
             // In the unified SPMP model, we consider S/HS-mode as Smode
             // If V = 0, we consider U-mode as Umode
             // If V = 1, we consider VS-mode and VU-mode as Umode
-            assign final_smode  = access_HS | (access_S & !v_i);
+            assign final_smode  = access_HS | (access_S & ~v_i);
             assign final_umode  = (v_i) ? (access_S | access_U)  : (access_U);
             // Bypass all M-mode accesses
             assign bypass_check = access_M;
@@ -161,7 +162,7 @@ module spmp_hyp
                 // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
                 for (i = 0; i < NR_ENTRIES; i++) begin
 
-                    if (match[i]) begin
+                    if (match[i] && spmpswitch_i[i]) begin
 
                         // Entry matches. Enforce checks
                         // Access is allowed if:

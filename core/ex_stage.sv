@@ -221,8 +221,10 @@ module ex_stage
     // SPMP
     input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]   spmpcfg_i,
     input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]  spmpaddr_i,
+    input logic [63:0]                            spmpswitch_i,
     input riscv::spmpcfg_t [SPMP_N_ENTRIES-1:0]   vspmpcfg_i,
     input riscv::spmpaddr_t [SPMP_N_ENTRIES-1:0]  vspmpaddr_i,
+    input logic [63:0]                            vspmpswitch_i,
     // Information dedicated to RVFI - RVFI
     output lsu_ctrl_t rvfi_lsu_ctrl_o,
     // Information dedicated to RVFI - RVFI
@@ -489,8 +491,10 @@ module ex_stage
       .pmpaddr_i,
       .spmpcfg_i,
       .spmpaddr_i,
+      .spmpswitch_i,
       .vspmpcfg_i,
       .vspmpaddr_i,
+      .vspmpswitch_i,
       .rvfi_lsu_ctrl_o,
       .rvfi_mem_paddr_o
   );
