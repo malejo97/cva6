@@ -43,6 +43,9 @@ package cva6_config_pkg;
   localparam CVA6ConfigDcacheSetAssoc = 8;
   localparam CVA6ConfigDcacheLineWidth = 128;
 
+  localparam CVA6ConfigDcacheFlushOnFence = 1'b0;
+  localparam CVA6ConfigDcacheInvalidateOnFlush = 1'b0;
+
   localparam CVA6ConfigDcacheIdWidth = 1;
   localparam CVA6ConfigMemTidWidth = 2;
 
@@ -67,6 +70,9 @@ package cva6_config_pkg;
   localparam config_pkg::cache_type_t CVA6ConfigDcacheType = config_pkg::WT;
 
   localparam CVA6ConfigMmuPresent = 1;
+
+  localparam CVA6ConfigSpmpPresent = 1;
+  localparam CVA6ConfigNrSPMPEntries = 64;
 
   localparam CVA6ConfigRvfiTrace = 1;
 
@@ -120,6 +126,10 @@ package cva6_config_pkg;
       PMPAddrRstVal: {64{64'h0}},
       PMPEntryReadOnly: 64'd0,
       PMPNapotEn: bit'(1),
+      SpmpPresent: bit'(CVA6ConfigSpmpPresent),
+      NrSPMPEntries: unsigned'(CVA6ConfigNrSPMPEntries),
+      SPMPCfgRstVal: {64{64'h0}},
+      SPMPAddrRstVal: {64{64'h0}},
       NOCType: config_pkg::NOC_TYPE_AXI4_ATOP,
       NrNonIdempotentRules: unsigned'(2),
       NonIdempotentAddrBase: 1024'({64'b0, 64'b0}),
@@ -140,6 +150,8 @@ package cva6_config_pkg;
       DcacheByteSize: unsigned'(CVA6ConfigDcacheByteSize),
       DcacheSetAssoc: unsigned'(CVA6ConfigDcacheSetAssoc),
       DcacheLineWidth: unsigned'(CVA6ConfigDcacheLineWidth),
+      DcacheFlushOnFence: bit'(CVA6ConfigDcacheFlushOnFence),
+      DcacheInvalidateOnFlush: bit'(CVA6ConfigDcacheInvalidateOnFlush),
       DataUserEn: unsigned'(CVA6ConfigDataUserEn),
       WtDcacheWbufDepth: int'(CVA6ConfigWtDcacheWbufDepth),
       FetchUserWidth: unsigned'(CVA6ConfigFetchUserWidth),

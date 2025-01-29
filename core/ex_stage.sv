@@ -225,6 +225,14 @@ module ex_stage
     input riscv::pmpcfg_t [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0] pmpcfg_i,
     // Report the PMP addresses - CSR_REGFILE
     input logic [(CVA6Cfg.NrPMPEntries > 0 ? CVA6Cfg.NrPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
+    // SPMP configuration
+    input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  spmpcfg_i,
+    // SPMP addresses
+    input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
+    // vSPMP configuration
+    input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_i,
+    // vSPMP addresses
+    input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr_i,
     // Information dedicated to RVFI - RVFI
     output lsu_ctrl_t rvfi_lsu_ctrl_o,
     // Information dedicated to RVFI - RVFI
@@ -587,6 +595,10 @@ module ex_stage
       .tinst_i               (lsu_tinst),
       .pmpcfg_i,
       .pmpaddr_i,
+      .spmpcfg_i,
+      .spmpaddr_i,
+      .vspmpcfg_i,
+      .vspmpaddr_i,
       .rvfi_lsu_ctrl_o,
       .rvfi_mem_paddr_o
   );

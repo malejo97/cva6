@@ -116,6 +116,14 @@ package config_pkg;
     bit [63:0]                   PMPEntryReadOnly;
     // PMP NA4 and NAPOT mode enable
     bit                          PMPNapotEn;
+    // SPMP
+    bit                          SpmpPresent;
+    // Number of SPMP entries
+    int unsigned                 NrSPMPEntries;
+    // SPMP configuration CSR reset values
+    logic [63:0][63:0]           SPMPCfgRstVal;
+    // SPMP address CSR reset values
+    logic [63:0][63:0]           SPMPAddrRstVal;
     // PMA non idempotent rules number
     int unsigned                 NrNonIdempotentRules;
     // PMA NonIdempotent region base address
@@ -300,6 +308,10 @@ package config_pkg;
     logic [63:0][63:0]           PMPAddrRstVal;
     bit [63:0]                   PMPEntryReadOnly;
     bit                          PMPNapotEn;
+    bit                          SpmpPresent;
+    int unsigned                 NrSPMPEntries;
+    logic [63:0][63:0]           SPMPCfgRstVal;
+    logic [63:0][63:0]           SPMPAddrRstVal;
     noc_type_e                   NOCType;
     int unsigned                 NrNonIdempotentRules;
     logic [NrMaxRules-1:0][63:0] NonIdempotentAddrBase;
@@ -385,6 +397,7 @@ package config_pkg;
     assert (Cfg.NrExecuteRegionRules <= NrMaxRules);
     assert (Cfg.NrCachedRegionRules <= NrMaxRules);
     assert (Cfg.NrPMPEntries <= 64);
+    assert (Cfg.NrSPMPEntries <= 64);
     assert (!(Cfg.SuperscalarEn && Cfg.RVF));
     assert (!(Cfg.SuperscalarEn && Cfg.RVZCMP));
     assert (Cfg.FETCH_WIDTH == 32 || Cfg.FETCH_WIDTH == 64)
