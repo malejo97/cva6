@@ -1333,7 +1333,6 @@ module csr_regfile
             update_access_exception = 1'b1;
           end
         end
-        //? Need to flush when modifying vSPMP CSRs ??
         // vspmpcfg
         riscv::CSR_VSPMPCFG0,
         riscv::CSR_VSPMPCFG1,
@@ -1360,7 +1359,7 @@ module csr_regfile
               vspmpcfg_d[i + idx*4] = csr_wdata[i*8+:8];
             end
             // this instruction has side-effects
-            // flush_o = 1'b1;
+            flush_o = 1'b1;
           end
           else update_access_exception = 1'b1;
         end
@@ -1434,7 +1433,7 @@ module csr_regfile
           automatic int idx = csr_addr.csr_decode.address[5:0] - riscv::CSR_VSPMPADDR0[5:0];
           vspmpaddr_d[idx] = csr_wdata[CVA6Cfg.PLEN-3:0];
           // this instruction has side-effects
-          // flush_o = 1'b1;
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         end
@@ -1443,7 +1442,7 @@ module csr_regfile
         if (CVA6Cfg.RVH) begin 
           vspmpswitch0_d = csr_wdata;
           // this instruction has side-effects
-          // flush_o = 1'b1;
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         riscv::CSR_VSPMPSWITCH1:
@@ -1451,7 +1450,7 @@ module csr_regfile
         if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32)) begin
           vspmpswitch1_d = csr_wdata;
           // this instruction has side-effects
-          // flush_o = 1'b1;
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         // sstatus is a subset of mstatus - mask it accordingly
@@ -1537,7 +1536,6 @@ module csr_regfile
         riscv::CSR_SENVCFG:
         if (CVA6Cfg.RVU) fiom_d = csr_wdata[0];
         else update_access_exception = 1'b1;
-        //? Need to flush when modifying SPMP CSRs?
         // spmpcfg
         // SPMP does not have locked logic
         riscv::CSR_SPMPCFG0,
@@ -1565,7 +1563,7 @@ module csr_regfile
               spmpcfg_d[i + idx*4] = csr_wdata[i*8+:8];
             end
             // this instruction has side-effects
-            // flush_o = 1'b1;
+            flush_o = 1'b1;
           end
           else update_access_exception = 1'b1;
         end
@@ -1639,7 +1637,7 @@ module csr_regfile
           automatic int idx = csr_addr.csr_decode.address[5:0] - riscv::CSR_SPMPADDR0[5:0];
           spmpaddr_d[idx] = csr_wdata[CVA6Cfg.PLEN-3:0];
           // this instruction has side-effects
-          // flush_o = 1'b1;
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         end
@@ -1648,7 +1646,7 @@ module csr_regfile
         if (CVA6Cfg.RVS) begin 
           spmpswitch0_d = csr_wdata;
           // this instruction has side-effects
-          // flush_o = 1'b1;
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         riscv::CSR_SPMPSWITCH1:
@@ -1656,7 +1654,7 @@ module csr_regfile
         if (CVA6Cfg.RVS && (CVA6Cfg.XLEN == 32)) begin 
           spmpswitch1_d = csr_wdata;
           // this instruction has side-effects
-          // flush_o = 1'b1;
+          flush_o = 1'b1;
         end
         else update_access_exception = 1'b1;
         //hypervisor mode registers
