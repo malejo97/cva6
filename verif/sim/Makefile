@@ -409,7 +409,8 @@ vcs-testharness:
 	grep $(isspostrun_opts) ./trace_rvfi_hart_00.dasm
 
 veri-testharness:
-	make -C $(path_var) verilate verilator="verilator --no-timing" target=$(target) defines=$(subst +define+,,$(isscomp_opts))
+	make -C $(path_var) verilate verilator="/home/manuale97/sPMP/cva6/tools/verilator-v5.008/bin/verilator --no-timing" \
+	  target=$(target) defines=$(subst +define+,,$(isscomp_opts))
 	$(path_var)/work-ver/Variane_testharness $(if $(TRACE_COMPACT), -f verilator.fst) $(if $(TRACE_FAST), -v verilator.vcd) $(elf) $(issrun_opts) \
 	  $(COMMON_PLUS_ARGS)
 	# If present, move default waveform files to log directory.
