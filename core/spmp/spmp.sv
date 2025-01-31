@@ -33,6 +33,7 @@ module spmp
     input  logic mmu_enabled_i,
     input riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0] spmpcfg_i,
     input logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_i,
+    input  logic [63:0] spmpswitch_i,
     // Output
     output logic allow_o
 );
@@ -103,7 +104,7 @@ module spmp
                     // Enforce permission checks without X permissions
                     enforce_no_x    = ((access_type_i & {1'b0, spmpcfg_i[i].access_perm[1:0]}) == access_type_i);
 
-                    if (match[i]) begin
+                    if (match[i] && spmpswitch_i[i]) begin
 
                         // S-mode only rule
                         if (spmpcfg_i[i].s_mode) begin
