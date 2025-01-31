@@ -82,7 +82,7 @@ module spmp_hyp
                 .matching_mode_i    (spmpcfg_i[i].addr_mode),
                 .match_o            (match[i])
             );
-        end : gen_spmp_entries
+        end : gen_spmp_matchers
 
         //------------------------------
         // SPMP Permissions Check Logic

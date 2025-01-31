@@ -182,6 +182,11 @@ ${CVA6_REPO_DIR}/core/pmp/src/pmp.sv
 ${CVA6_REPO_DIR}/core/pmp/src/pmp_entry.sv
 ${CVA6_REPO_DIR}/core/pmp/src/pmp_data_if.sv
 
+// Supervisor Physical Memory Protection
+${CVA6_REPO_DIR}/core/spmp/spmp.sv
+${CVA6_REPO_DIR}/core/spmp/spmp_hyp.sv
+${CVA6_REPO_DIR}/core/spmp/spmp_addr_matcher.sv
+
 // Tracer (behavioral code, not RTL)
 ${CVA6_REPO_DIR}/common/local/util/instr_tracer.sv
 ${CVA6_REPO_DIR}/common/local/util/tc_sram_wrapper.sv

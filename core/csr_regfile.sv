@@ -168,10 +168,14 @@ module csr_regfile
     output riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  spmpcfg_o,
     // SPMP addresses
     output logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] spmpaddr_o,
+    // SPMP switch 
+    output logic [63:0] spmpswitch_o,
     // vSPMP configuration
     output riscv::spmpcfg_t [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0]  vspmpcfg_o,
     // vSPMP addresses
     output logic [(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] vspmpaddr_o,
+    // vSPMP switch 
+    output logic [63:0] vspmpswitch_o,
     // TO_BE_COMPLETED - PERF_COUNTERS
     output logic [31:0] mcountinhibit_o,
     // RVFI
@@ -2987,8 +2991,24 @@ module csr_regfile
 
   assign spmpcfg_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? (spmpcfg_q) : ('0);
   assign spmpaddr_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? (spmpaddr_q) : ('0);
-  assign vspmpcfg_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVH) ? (vspmpcfg_q) : ('0);
-  assign vspmpaddr_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVH) ? (vspmpaddr_q) : ('0);
+  if (CVA6Cfg.XLEN == 32) begin
+    assign spmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? ({spmpswitch1_q, spmpswitch0_q}) : ('0);
+  end
+  else if (CVA6Cfg.XLEN == 64) begin
+    assign spmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) ? (spmpswitch0_q) : ('0);
+  end
+  else
+    assign spmpswitch_o  = '0;
+  assign vspmpcfg_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? (vspmpcfg_q) : ('0);
+  assign vspmpaddr_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? (vspmpaddr_q) : ('0);
+  if (CVA6Cfg.XLEN == 32) begin
+    assign vspmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? ({vspmpswitch1_q, vspmpswitch0_q}) : ('0);
+  end
+  else if (CVA6Cfg.XLEN == 64) begin
+    assign vspmpswitch_o = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS && CVA6Cfg.RVH) ? (vspmpswitch0_q) : ('0);
+  end
+  else
+    assign vspmpswitch_o = '0;
 
   // sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin

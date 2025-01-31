@@ -68,6 +68,7 @@ module spmp
         //------------------------------
 
         logic  access_R;
+        logic  access_W;
         logic  access_X;
         logic  access_RW;
 
