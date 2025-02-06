@@ -186,6 +186,7 @@ ${CVA6_REPO_DIR}/core/pmp/src/pmp_data_if.sv
 ${CVA6_REPO_DIR}/core/spmp/spmp.sv
 ${CVA6_REPO_DIR}/core/spmp/spmp_hyp.sv
 ${CVA6_REPO_DIR}/core/spmp/spmp_addr_matcher.sv
+${CVA6_REPO_DIR}/core/spmp/spmp_interface.sv
 
 // Tracer (behavioral code, not RTL)
 ${CVA6_REPO_DIR}/common/local/util/instr_tracer.sv

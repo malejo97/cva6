@@ -242,7 +242,6 @@ module load_store_unit
   exception_t                               misaligned_exception;
   exception_t                               ld_ex;
   exception_t                               st_ex;
-  exception_t                               spmp_if_ex, spmp_lsu_ex;
 
   logic                                     hs_ld_st_inst;
   logic                                     hlvx_inst;
@@ -333,310 +332,47 @@ module load_store_unit
     //--------------
     if (CVA6Cfg.SpmpPresent) begin : gen_spmp
 
-      logic [CVA6Cfg.PLEN-1:0]  if_spmp_req_addr;
-      riscv::pmp_access_t       if_spmp_access_type;
-      riscv::priv_lvl_t         if_spmp_priv_lvl;
-      logic                     if_spmp_v;
-      
-      logic [CVA6Cfg.PLEN-1:0]  lsu_spmp_req_addr;
-      riscv::pmp_access_t       lsu_spmp_access_type;
-      riscv::priv_lvl_t         lsu_spmp_priv_lvl;
-      logic                     lsu_spmp_v;
+      spmp_interface #(
+        .CVA6Cfg          (CVA6Cfg),
+        .icache_areq_t    (icache_areq_t),
+        .icache_arsp_t    (icache_arsp_t),
+        .exception_t      (exception_t)
+      ) i_spmp_interface (
+        .clk_i            (clk_i),
+        .rst_ni           (rst_ni),
 
-      logic                     spmp_if_req_q, spmp_if_req_d;
-      logic                     spmp_ld_req_q, spmp_ld_req_d;
-      logic                     spmp_st_req_q, spmp_st_req_d;
-      logic                     if_spmp_v_q, if_spmp_v_d;
-      logic                     lsu_spmp_v_q, lsu_spmp_v_d;
-      always_comb begin : spmp_parameters
+        .priv_lvl_i       (priv_lvl_i),
+        .v_i              (v_i),
+        .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
+        .ld_st_v_i        (ld_st_v_i),
+        .sum_i            (sum_i),
+        .vs_sum_i         (vs_sum_i),
+        .mxr_i            (mxr_i),
+        .vmxr_i           (vmxr_i),
+        .hlvx_inst_i      (mmu_hlvx_inst),
+        .mmu_enabled_i    (1'b0),
 
-        // IF
-        if_spmp_req_addr      = (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) ?
-                                (icache_areq_i.fetch_vaddr[CVA6Cfg.PLEN-1:0]) :
-                                (CVA6Cfg.PLEN'(icache_areq_i.fetch_vaddr));
-        if_spmp_access_type   = riscv::ACCESS_EXEC;
-        if_spmp_priv_lvl      = priv_lvl_i;
-        if_spmp_v             = v_i;
-        if_spmp_v_d           = if_spmp_v_q;
+        .if_req_i         (icache_areq_i),
+        .if_req_o         (pmp_icache_areq_i),
 
-        // LSU
-        lsu_spmp_req_addr     = (CVA6Cfg.VLEN >= CVA6Cfg.PLEN) ?
-                                (mmu_vaddr[CVA6Cfg.PLEN-1:0]) :
-                                (CVA6Cfg.PLEN'(mmu_vaddr));
-        lsu_spmp_access_type  = riscv::ACCESS_NONE;
-        lsu_spmp_priv_lvl     = ld_st_priv_lvl_i;
-        lsu_spmp_v            = ld_st_v_i;
-        lsu_spmp_v_d          = lsu_spmp_v_q;
+        // LSU interface
+        .lsu_valid_i      (translation_req),
+        .lsu_vaddr_i      (mmu_vaddr),
+        .lsu_tinst_i      (mmu_tinst),
+        .lsu_is_store_i   (st_translation_req),
+        .misaligned_ex_i  (misaligned_exception),
 
-        spmp_if_req_d     = 1'b0;
-        spmp_ld_req_d     = 1'b0;
-        spmp_st_req_d     = 1'b0;
+        .lsu_valid_o      (pmp_translation_valid),
+        .lsu_paddr_o      (lsu_paddr),
+        .lsu_exception_o  (pmp_exception),
 
-        /*** IF request ***/
-        if (icache_areq_i.fetch_req) begin
-          spmp_if_req_d = 1'b1;
-          if_spmp_v_d   = v_i;
-        end
-
-        /*** Load request ***/
-        if (ld_translation_req) begin
-          spmp_ld_req_d         = 1'b1;
-          lsu_spmp_access_type  = riscv::ACCESS_READ;
-          lsu_spmp_v_d          = ld_st_v_i;
-        end
-
-        /*** Store request ***/
-        else if (st_translation_req) begin
-          spmp_st_req_d         = 1'b1;
-          lsu_spmp_access_type  = riscv::ACCESS_WRITE;
-          lsu_spmp_v_d          = ld_st_v_i;
-        end
-      end : spmp_parameters
-
-      logic [CVA6Cfg.XLEN-1:0]  lsu_ex_addr;
-      logic [CVA6Cfg.GPLEN-1:0] lsu_ex_gpaddr;
-      logic                     lsu_spmp_allow_q, lsu_spmp_allow_d;
-      logic                     if_spmp_allow_q, if_spmp_allow_d;
-      logic                     lsu_vspmp_allow_q, lsu_vspmp_allow_d;
-      logic                     if_vspmp_allow_q, if_vspmp_allow_d;
-      always_comb begin : spmp_exception
-
-        // SPMP IF exception
-        spmp_if_ex.cause  = riscv::INSTR_PAGE_FAULT;
-        spmp_if_ex.tval   = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
-                            {{8{1'b0}}, if_spmp_req_addr}:
-                            (if_spmp_req_addr[CVA6Cfg.VLEN-1:0]);
-        spmp_if_ex.tval2  = {CVA6Cfg.GPLEN{1'b0}};
-        spmp_if_ex.tinst  = {32{1'b0}};
-        spmp_if_ex.gva    = if_spmp_v_q;
-        spmp_if_ex.valid  = 1'b0;
-
-        // SPMP LSU exception
-        spmp_lsu_ex       = misaligned_exception;
-        lsu_ex_addr       = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
-                            {{8{1'b0}}, lsu_spmp_req_addr}:
-                            (lsu_spmp_req_addr[CVA6Cfg.VLEN-1:0]);
-        lsu_ex_gpaddr     = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
-                            (lsu_spmp_req_addr[CVA6Cfg.GPLEN-1:0]):
-                            {lsu_spmp_req_addr};
-
-        /*** IF request ***/
-        if (spmp_if_req_q) begin
-          // SPMP Exception
-          if (!if_spmp_allow_q) begin
-            if (if_spmp_v_q) begin
-            spmp_if_ex.cause = riscv::INSTR_GUEST_PAGE_FAULT;
-            spmp_if_ex.tval2 = (CVA6Cfg.VLEN > CVA6Cfg.PLEN)? 
-                              (if_spmp_req_addr[CVA6Cfg.GPLEN-1:0]):
-                              {if_spmp_req_addr};
-            end
-            spmp_if_ex.valid = icache_areq_i.fetch_req;
-          end
-          // vSPMP Exception
-          else if (!if_vspmp_allow_q) begin
-            spmp_if_ex.valid = icache_areq_i.fetch_req;
-          end
-        end
-
-        /*** Load request ***/
-        if (spmp_ld_req_q) begin
-          // SPMP Exception
-          if (!lsu_spmp_allow_q) begin
-            spmp_lsu_ex.cause  = (lsu_spmp_v_q) ? (riscv::LOAD_GUEST_PAGE_FAULT) : (riscv::LOAD_PAGE_FAULT);
-            spmp_lsu_ex.tval   = lsu_ex_addr;
-            spmp_lsu_ex.tval2  = (lsu_spmp_v_q) ? (lsu_ex_gpaddr) : ({CVA6Cfg.GPLEN{1'b0}});
-            spmp_lsu_ex.tinst  = {32{1'b0}};
-            spmp_lsu_ex.gva    = lsu_spmp_v_q;
-            spmp_lsu_ex.valid  = 1'b1;
-          end
-          // vSPMP exception
-          else if (!lsu_vspmp_allow_q) begin
-            spmp_lsu_ex.cause  = riscv::LOAD_PAGE_FAULT;
-            spmp_lsu_ex.tval   = lsu_ex_addr;
-            spmp_lsu_ex.tval2  = {CVA6Cfg.GPLEN{1'b0}};
-            spmp_lsu_ex.tinst  = mmu_tinst;
-            spmp_lsu_ex.gva    = lsu_spmp_v_q;
-            spmp_lsu_ex.valid  = 1'b1;
-          end
-        end
-
-        /*** Store request ***/
-        else if (spmp_st_req_q) begin
-          // SPMP Exception
-          if (!lsu_spmp_allow_q) begin
-            spmp_lsu_ex.cause  = (lsu_spmp_v_q) ? (riscv::STORE_GUEST_PAGE_FAULT) : (riscv::STORE_PAGE_FAULT);
-            spmp_lsu_ex.tval   = lsu_ex_addr;
-            spmp_lsu_ex.tval2  = (lsu_spmp_v_q) ? (lsu_ex_gpaddr) : ({CVA6Cfg.GPLEN{1'b0}});
-            spmp_lsu_ex.tinst  = {32{1'b0}};
-            spmp_lsu_ex.gva    = lsu_spmp_v_q;
-            spmp_lsu_ex.valid  = 1'b1;
-          end
-          // vSPMP exception
-          else if (!lsu_vspmp_allow_q) begin
-            spmp_lsu_ex.cause  = riscv::STORE_PAGE_FAULT;
-            spmp_lsu_ex.tval   = lsu_ex_addr;
-            spmp_lsu_ex.tval2  = {CVA6Cfg.GPLEN{1'b0}};
-            spmp_lsu_ex.tinst  = mmu_tinst;
-            spmp_lsu_ex.gva    = lsu_spmp_v_q;
-            spmp_lsu_ex.valid  = 1'b1;
-          end
-        end
-      end : spmp_exception
-
-      // Double-stage SPMP
-      if (CVA6Cfg.RVH) begin : gen_double_spmp
-
-        // IF vSPMP
-        spmp_hyp #(
-          .CVA6Cfg            (CVA6Cfg),
-          .is_vSPMP           (1)
-        ) i_if_vspmp (
-          .addr_i             (if_spmp_req_addr),
-          .access_type_i      (if_spmp_access_type),
-          .priv_lvl_i         (if_spmp_priv_lvl),
-          .sum_i              (vs_sum_i),
-          .mxr_i              (mxr_i),
-          .vmxr_i             (vmxr_i),
-          .v_i                (if_spmp_v),
-          .is_hlvx_inst_i     (mmu_hlvx_inst),
-          .mmu_enabled_i      (1'b0),
-          .spmpcfg_i          (vspmpcfg_i),
-          .spmpaddr_i         (vspmpaddr_i),
-          .spmpswitch_i       (vspmpswitch_i),
-          .allow_o            (if_vspmp_allow_d)
-        );
-
-        // IF [hg]SPMP
-        spmp_hyp #(
-          .CVA6Cfg            (CVA6Cfg),
-          .is_vSPMP           (0)
-        ) i_if_spmp (
-          .addr_i             (if_spmp_req_addr),
-          .access_type_i      (if_spmp_access_type),
-          .priv_lvl_i         (if_spmp_priv_lvl),
-          .sum_i              (sum_i),
-          .mxr_i              (mxr_i),
-          .vmxr_i             (1'b0),
-          .v_i                (if_spmp_v),
-          .is_hlvx_inst_i     (mmu_hlvx_inst),
-          .mmu_enabled_i      (1'b0),
-          .spmpcfg_i          (spmpcfg_i),
-          .spmpaddr_i         (spmpaddr_i),
-          .spmpswitch_i       (spmpswitch_i),
-          .allow_o            (if_spmp_allow_d)
-        );
-          
-        // LSU vSPMP
-        spmp_hyp #(
-          .CVA6Cfg            (CVA6Cfg),
-          .is_vSPMP           (1)
-        ) i_lsu_vspmp (
-          .addr_i             (lsu_spmp_req_addr),
-          .access_type_i      (lsu_spmp_access_type),
-          .priv_lvl_i         (lsu_spmp_priv_lvl),
-          .sum_i              (vs_sum_i),
-          .mxr_i              (mxr_i),
-          .vmxr_i             (vmxr_i),
-          .v_i                (lsu_spmp_v),
-          .is_hlvx_inst_i     (mmu_hlvx_inst),
-          .mmu_enabled_i      (1'b0),
-          .spmpcfg_i          (vspmpcfg_i),
-          .spmpaddr_i         (vspmpaddr_i),
-          .spmpswitch_i       (vspmpswitch_i),
-          .allow_o            (lsu_vspmp_allow_d)
-        );
-
-        // LSU [hg]SPMP
-        spmp_hyp #(
-          .CVA6Cfg            (CVA6Cfg),
-          .is_vSPMP           (0)
-        ) i_lsu_spmp (
-          .addr_i             (lsu_spmp_req_addr),
-          .access_type_i      (lsu_spmp_access_type),
-          .priv_lvl_i         (lsu_spmp_priv_lvl),
-          .sum_i              (sum_i),
-          .mxr_i              (mxr_i),
-          .vmxr_i             (1'b0),
-          .v_i                (lsu_spmp_v),
-          .is_hlvx_inst_i     (mmu_hlvx_inst),
-          .mmu_enabled_i      (1'b0),
-          .spmpcfg_i          (spmpcfg_i),
-          .spmpaddr_i         (spmpaddr_i),
-          .spmpswitch_i       (spmpswitch_i),
-          .allow_o            (lsu_spmp_allow_d)
-        );
-      end : gen_double_spmp
-
-      // Single-stage SPMP
-      else begin : gen_single_spmp
-        
-        // IF SPMP
-        spmp #( 
-          .CVA6Cfg            (CVA6Cfg)
-        ) i_if_spmp (
-          .addr_i             (if_spmp_req_addr),
-          .access_type_i      (if_spmp_access_type),
-          .priv_lvl_i         (if_spmp_priv_lvl),
-          .sum_i              (sum_i),
-          .mxr_i              (mxr_i),
-          .mmu_enabled_i      (1'b0),
-          .spmpcfg_i          (spmpcfg_i),
-          .spmpaddr_i         (spmpaddr_i),
-          .spmpswitch_i       (spmpswitch_i),
-          .allow_o            (if_spmp_allow_d)
-        );
-
-        // LSU SPMP
-        spmp #( 
-          .CVA6Cfg            (CVA6Cfg)
-        ) i_lsu_spmp (
-          .addr_i             (lsu_spmp_req_addr),
-          .access_type_i      (lsu_spmp_access_type),
-          .priv_lvl_i         (lsu_spmp_priv_lvl),
-          .sum_i              (sum_i),
-          .mxr_i              (mxr_i),
-          .mmu_enabled_i      (1'b0),
-          .spmpcfg_i          (spmpcfg_i),
-          .spmpaddr_i         (spmpaddr_i),
-          .spmpswitch_i       (spmpswitch_i),
-          .allow_o            (lsu_spmp_allow_d)
-        );
-
-        assign lsu_vspmp_allow_d = 1'b1;
-        assign if_vspmp_allow_d = 1'b1;
-      end : gen_single_spmp
-
-      // 1-cycle latency
-      assign pmp_icache_areq_i.fetch_valid = spmp_if_req_q;
-      assign pmp_icache_areq_i.fetch_paddr = if_spmp_req_addr;
-      assign pmp_icache_areq_i.fetch_exception = spmp_if_ex;
-      assign pmp_translation_valid = (spmp_ld_req_q | spmp_st_req_q);
-      assign lsu_paddr = lsu_spmp_req_addr;
-      assign pmp_exception = spmp_lsu_ex;
-
-      always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-          spmp_if_req_q     <= 1'b0;
-          spmp_ld_req_q     <= 1'b0;
-          spmp_st_req_q     <= 1'b0;
-          if_spmp_v_q       <= 1'b0;
-          lsu_spmp_v_q      <= 1'b0;
-          if_spmp_allow_q   <= 1'b1;
-          lsu_spmp_allow_q  <= 1'b1;
-          if_vspmp_allow_q  <= 1'b1;
-          lsu_vspmp_allow_q <= 1'b1;
-        end else begin
-          spmp_if_req_q     <= spmp_if_req_d;
-          spmp_ld_req_q     <= spmp_ld_req_d;
-          spmp_st_req_q     <= spmp_st_req_d;
-          if_spmp_v_q       <= if_spmp_v_d;
-          lsu_spmp_v_q      <= lsu_spmp_v_d;
-          if_spmp_allow_q   <= if_spmp_allow_d;
-          lsu_spmp_allow_q  <= lsu_spmp_allow_d;
-          if_vspmp_allow_q  <= if_vspmp_allow_d;
-          lsu_vspmp_allow_q <= lsu_vspmp_allow_d;
-        end
-      end
+        .spmpcfg_i        (spmpcfg_i),
+        .spmpaddr_i       (spmpaddr_i),
+        .spmpswitch_i     (spmpswitch_i),
+        .vspmpcfg_i       (vspmpcfg_i),
+        .vspmpaddr_i      (vspmpaddr_i),
+        .vspmpswitch_i    (vspmpswitch_i)
+      );
     end : gen_spmp
 
     // No SPMP
@@ -648,7 +384,7 @@ module load_store_unit
       end else begin : gen_virtual_physical_address_instruction_plen_greater
         assign pmp_icache_areq_i.fetch_paddr = CVA6Cfg.PLEN'(icache_areq_i.fetch_vaddr);
       end
-      assign pmp_icache_areq_i.fetch_exception = spmp_if_ex;
+      assign pmp_icache_areq_i.fetch_exception = '0;
       // dcache request without mmu for load or store,
       // Delay of 1 cycle to match MMU latency giving the address tag
       always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -662,18 +398,10 @@ module load_store_unit
           end else begin
             lsu_paddr <= CVA6Cfg.PLEN'(mmu_vaddr);
           end
-          pmp_exception <= spmp_lsu_ex;
+          pmp_exception <= misaligned_exception;
           pmp_translation_valid <= translation_req;
         end
       end
-
-      assign spmp_if_ex.cause = {CVA6Cfg.XLEN{1'b0}};
-      assign spmp_if_ex.tval  = {CVA6Cfg.XLEN{1'b0}};
-      assign spmp_if_ex.tval2 = {CVA6Cfg.GPLEN{1'b0}};
-      assign spmp_if_ex.tinst = {32{1'b0}};
-      assign spmp_if_ex.gva   = 1'b0;
-      assign spmp_if_ex.valid = 1'b0;
-      assign spmp_lsu_ex = misaligned_exception;
     end : no_spmp
 
     // dcache interface of PTW not used
