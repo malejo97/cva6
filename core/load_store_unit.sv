@@ -629,12 +629,12 @@ module load_store_unit
           spmp_if_req_q     <= spmp_if_req_d;
           spmp_ld_req_q     <= spmp_ld_req_d;
           spmp_st_req_q     <= spmp_st_req_d;
-          if_spmp_v_q       <= if_spmp_v_q;
-          lsu_spmp_v_q      <= lsu_spmp_v_q;
-          if_spmp_allow_q   <= if_spmp_allow_q;
-          lsu_spmp_allow_q  <= lsu_spmp_allow_q;
-          if_vspmp_allow_q  <= if_vspmp_allow_q;
-          lsu_vspmp_allow_q <= lsu_vspmp_allow_q;
+          if_spmp_v_q       <= if_spmp_v_d;
+          lsu_spmp_v_q      <= lsu_spmp_v_d;
+          if_spmp_allow_q   <= if_spmp_allow_d;
+          lsu_spmp_allow_q  <= lsu_spmp_allow_d;
+          if_vspmp_allow_q  <= if_vspmp_allow_d;
+          lsu_vspmp_allow_q <= lsu_vspmp_allow_d;
         end
       end
     end : gen_spmp

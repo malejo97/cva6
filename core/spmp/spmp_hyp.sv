@@ -59,18 +59,18 @@ module spmp_hyp
     output logic allow_o
 );
 
-    if (CVA6Cfg.NrSPMPEntries > 0) begin : gen_spmp
+    if (CVA6Cfg.NrSPMPEntries > 0) begin : gen_spmp_logic
 
         //--------------------------
         // SPMP Address Match Logic
         //--------------------------
 
         logic [(CVA6Cfg.NrSPMPEntries-1):0] match;
-        logic [(CVA6Cfg.NrSPMPEntries-1):0][CVA6Cfg.PLEN-3:0] spmpaddr_prev;
 
         for (genvar i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin : gen_spmp_matchers
-            
+
             // Get previous address reg for TOR configs
+            logic [(CVA6Cfg.NrSPMPEntries-1):0][CVA6Cfg.PLEN-3:0] spmpaddr_prev;
             assign spmpaddr_prev[i] = ((i == 0) ? ('0) : (spmpaddr_i[i-1]));
 
             spmp_addr_matcher #(
@@ -107,6 +107,7 @@ module spmp_hyp
 
         assign access_U     = (priv_lvl_i == riscv::PRIV_LVL_U);
         assign access_S     = (priv_lvl_i == riscv::PRIV_LVL_S);
+        assign access_HS    = (priv_lvl_i == riscv::PRIV_LVL_HS);
         assign access_M     = (priv_lvl_i == riscv::PRIV_LVL_M);
 
         // Efective privilege modes
@@ -114,18 +115,18 @@ module spmp_hyp
         // Accesses to bypass
         logic bypass_check;
         // Permission check
-        logic enforce, enforce_no_x;
+        logic [(CVA6Cfg.NrSPMPEntries-1):0] enforce, enforce_no_x;
 
         /* Determine effective privileges */
-        if (is_vSPMP) begin : gen_vspmp
+        if (is_vSPMP) begin : gen_vspmp_priv
             // For the vSPMP we consider VS-mode as S-mode and and VU-mode as U-mode.
             assign eff_Smode  = access_S & v_i;
             assign eff_Umode  = access_U & v_i;
             // Bypass non-guest accesses
             assign bypass_check = !v_i;
-        end : gen_vspmp
+        end : gen_vspmp_priv
 
-        else begin : gen_unif_spmp
+        else begin : gen_unif_spmp_priv
             // In the unified SPMP model, we consider S/HS-mode as S-mode
             // If V = 0, we consider U-mode as Umode
             // If V = 1, we consider VS-mode and VU-mode as Umode
@@ -133,15 +134,148 @@ module spmp_hyp
             assign eff_Umode  = (v_i) ? (access_S | access_U)  : (access_U);
             // Bypass all M-mode accesses
             assign bypass_check = access_M;
-        end : gen_unif_spmp
+        end : gen_unif_spmp_priv
 
-        always_comb begin : spmp_check
+        always_comb begin : gen_spmp_enforce
 
-            int unsigned i;
+            for (int unsigned i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
 
-            enforce         = 1'b0;
-            enforce_no_x    = 1'b0;
-            allow_o         = 1'b0;
+                enforce[i]      = 1'b0;
+                enforce_no_x[i] = 1'b0;
+
+                // Enforce checks
+                // Access is allowed if:
+                // (1) Permissions matches with access type, if not an HLVX instruction
+                // (2) Load and cfg.X = 1 and (sstatus.MXR = 1 or (vsstatus.MXR = 1 and is_vSPMP = 1))
+                // (3) HLVX instruction and cfg.X = 1
+                if ( (((access_type_i & spmpcfg_i[i].access_perm) == access_type_i) && !is_hlvx_inst_i) || 
+                        (access_R && spmpcfg_i[i].access_perm.x && (mxr_i || is_hlvx_inst_i || (vmxr_i && is_vSPMP)))) begin
+                    enforce[i] = 1'b1;
+                end
+
+                // HLVX will always fail when enforcing checks with no X permissions
+                // MXR has no effect without X permissions
+                if (((access_type_i & {1'b0, spmpcfg_i[i].access_perm[1:0]}) == access_type_i) && !is_hlvx_inst_i) begin
+                    enforce_no_x[i] = 1'b1;
+                end
+            end
+        end : gen_spmp_enforce
+
+        logic allow;
+
+        always_comb begin : gen_spmp_check
+
+            int unsigned k;
+
+            allow = 1'b0;
+
+            // SPMP entries are statically prioritized
+            // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
+            for (k = 0; k < CVA6Cfg.NrSPMPEntries; k++) begin
+
+                if (match[k] && spmpswitch_i[k]) begin
+
+                    // S-mode only rule
+                    if (spmpcfg_i[k].s_mode) begin
+                        
+                        // XWR
+                        case (spmpcfg_i[k].access_perm)
+
+                            // Enforce for S-mode, deny for U-mode 
+                            3'b001,
+                            3'b101,
+                            3'b100,
+                            3'b011: begin
+                                if (eff_Smode && enforce[k]) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // Reserved encoding
+                            3'b000: begin
+                                allow =   1'b0;
+                            end
+
+                            // Shared RO
+                            3'b111: begin
+                                if (access_R) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // R for S-mode, Shared X
+                            3'b110: begin
+                                if ((access_X) || (access_R && eff_Smode)) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // Shared X
+                            3'b010: begin
+                                if (access_X) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                        endcase
+                    end
+
+                    // U-mode rule
+                    else begin
+                        
+                        // XWR
+                        case (spmpcfg_i[k].access_perm)
+
+                            // Deny for S-mode if sstatus.SUM = 0,
+                            // Enforce without X for S-mode if sstatus.SUM = 1,
+                            // Enforce for U-mode
+                            3'b001,
+                            3'b101,
+                            3'b100,
+                            3'b000,
+                            3'b011,
+                            3'b111: begin
+                                if ((eff_Smode && sum_i && enforce_no_x[k]) || (eff_Umode && enforce[k])) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // Shared RW
+                            3'b110: begin
+                                if (access_RW) begin
+                                    allow = 1'b1;
+                                end
+                            end
+
+                            // Shared R, RW for S-mode
+                            3'b010: begin
+                                if ((access_R) || (access_W && eff_Smode)) begin
+                                    allow = 1'b1;
+                                end
+                            end
+                        endcase
+                    end
+
+                    // No need to continue after a match
+                    break;
+                end
+            end
+
+            // no match
+            if (k == CVA6Cfg.NrSPMPEntries) begin
+
+                // If no SPMP entry matches, the following accesses are allowed:
+                // M/HS/U/VS-mode accesses if is_vSPMP = 1
+                // M/HS-mode accesses if is_vSPMP = 0
+                if (eff_Smode) begin
+                    allow = 1'b1;
+                end
+            end
+        end : gen_spmp_check
+
+        always_comb begin : spmp_allow
+
+            allow_o = 1'b0;
 
             // All M-mode accesses pass SPMP cheks
             // If the core MMU is enabled (vsatp.mode/hgatp.mode != Bare), SPMP is not used
@@ -150,116 +284,10 @@ module spmp_hyp
             end
 
             else begin
-
-                // SPMP entries are statically prioritized
-                // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
-                for (i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
-
-                    // Enforce checks
-                    // Access is allowed if:
-                    // (1) Permissions matches with access type, if not an HLVX instruction
-                    // (2) Load and cfg.X = 1 and (sstatus.MXR = 1 or (vsstatus.MXR = 1 and is_vSPMP = 1))
-                    // (3) HLVX instruction and cfg.X = 1
-                    if ( (((access_type_i & spmpcfg_i[i].access_perm) == access_type_i) && !is_hlvx_inst_i) || 
-                            (access_R && spmpcfg_i[i].access_perm.x && (mxr_i || is_hlvx_inst_i || (vmxr_i && is_vSPMP)))) begin
-                        enforce = 1'b1;
-                    end
-
-                    // HLVX will always fail when enforcing checks with no X permissions
-                    // MXR has no effect without X permissions
-                    if (((access_type_i & {1'b0, spmpcfg_i[i].access_perm[1:0]}) == access_type_i) && !is_hlvx_inst_i) begin
-                        enforce_no_x = 1'b1;
-                    end
-
-                    if (match[i] && spmpswitch_i[i]) begin
-
-                        // S-mode only rule
-                        if (spmpcfg_i[i].s_mode) begin
-                            
-                            // XWR
-                            case (spmpcfg_i[i].access_perm)
-
-                                // Enforce for S-mode, deny for U-mode 
-                                3'b001,
-                                3'b101,
-                                3'b100,
-                                3'b011: begin
-                                    allow_o =   (eff_Smode & enforce);
-                                end
-
-                                // Reserved encoding
-                                3'b000: begin
-                                    allow_o =   1'b0;
-                                end
-
-                                // Shared RO
-                                3'b111: begin
-                                    allow_o =   (access_R);
-                                end
-
-                                // R for S-mode, Shared X
-                                3'b110: begin
-                                    allow_o =   (access_X) |
-                                                (access_R & eff_Smode);
-                                end
-
-                                // Shared X
-                                3'b010: begin
-                                    allow_o =   (access_X);
-                                end
-
-                            endcase
-                        end
-
-                        // U-mode rule
-                        else begin
-                            
-                            // XWR
-                            case (spmpcfg_i[i].access_perm)
-
-                                // Deny for S-mode if sstatus.SUM = 0,
-                                // Enforce without X for S-mode if sstatus.SUM = 1,
-                                // Enforce for U-mode
-                                3'b001,
-                                3'b101,
-                                3'b100,
-                                3'b000,
-                                3'b011,
-                                3'b111: begin
-                                    allow_o =   (eff_Smode & sum_i & enforce_no_x) |  
-                                                (eff_Umode & enforce);
-                                end
-
-                                // Shared RW
-                                3'b110: begin
-                                    allow_o =   (access_RW);
-                                end
-
-                                // Shared R, RW for S-mode
-                                3'b010: begin
-                                    allow_o =   (access_R) |
-                                                (access_W & eff_Smode);
-                                end
-                            endcase
-                        end
-
-                        // No need to continue after a match
-                        break;
-                    end
-                end
-
-                // no match
-                if (i == CVA6Cfg.NrSPMPEntries) begin
-
-                    // If no SPMP entry matches, the following accesses are allowed:
-                    // M/HS/U/VS-mode accesses if is_vSPMP = 1
-                    // M/HS-mode accesses if is_vSPMP = 0
-                    allow_o = eff_Smode;
-                end
+                allow_o = allow;
             end
-        end : spmp_check
-
-    end : gen_spmp
+        end : spmp_allow
+    end : gen_spmp_logic
     
     // if there are no SPMP entries we can always grant the access
     else

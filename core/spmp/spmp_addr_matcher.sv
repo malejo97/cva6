@@ -83,6 +83,8 @@ module spmp_addr_matcher #(
                 mask        = '0;
                 size        = '0;
             end
+
+            default:;
         endcase
     end
 
