@@ -451,8 +451,8 @@ module csr_regfile
         riscv::CSR_VSPMPCFG15: begin
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVH) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             csr_rdata = vspmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
           end
           else read_access_exception = 1'b1;
@@ -524,7 +524,7 @@ module csr_regfile
         riscv::CSR_VSPMPADDR63: begin
           if (CVA6Cfg.RVH) begin
             // index is specified by the last byte of the address
-            automatic int idx = csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
+            automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
             // We only support granularity 8 bytes (G=1)
             // bits vspmpaddr[G-1:0] are all 0s when mode is OFF or TOR
             // bits vspmpaddr[G-2:0] reads all 1s when mode is NAPOT
@@ -613,8 +613,8 @@ module csr_regfile
         riscv::CSR_SPMPCFG14,
         riscv::CSR_SPMPCFG15: begin
           if ((CVA6Cfg.RVS) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             csr_rdata = spmpcfg_q[(idx << 2) +: CVA6Cfg.XLEN/8];
           end
           else read_access_exception = 1'b1;
@@ -686,7 +686,7 @@ module csr_regfile
         riscv::CSR_SPMPADDR63: begin
           if (CVA6Cfg.RVH) begin
             // index is specified by the last byte in the address
-            automatic int idx = csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
+            automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
             // We only support granularity 8 bytes (G=1)
             // bits spmpaddr[G-1:0] are all 0s when mode is OFF or TOR
             // bits spmpaddr[G-2:0] reads all 1s when mode is NAPOT
@@ -1025,7 +1025,7 @@ module csr_regfile
                 riscv::CSR_PMPCFG14,
                 riscv::CSR_PMPCFG15: begin
           // index is calculated using PMPCFG0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
 
           // if index is not even and XLEN==64, raise exception
           if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) read_access_exception = 1'b1;
@@ -1099,7 +1099,7 @@ module csr_regfile
                 riscv::CSR_PMPADDR62,
                 riscv::CSR_PMPADDR63: begin
           // index is calculated using PMPADDR0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
           // Important: we only support granularity 8 bytes (G=1)
           // -> last bit of pmpaddr must be set 0/1 based on the mode:
           // NA4, NAPOT: 1
@@ -1412,8 +1412,8 @@ module csr_regfile
         riscv::CSR_VSPMPCFG15: begin
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVH) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
               vspmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
             end
@@ -1489,7 +1489,7 @@ module csr_regfile
         riscv::CSR_VSPMPADDR63: begin
         if (CVA6Cfg.RVH) begin
           // index is specified by the last byte in the address
-          automatic int idx = csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
+          automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_VSPMPADDR0;
           vspmpaddr_d[idx[5:0]] = csr_wdata[CVA6Cfg.PLEN-3:0];
           // this instruction has side-effects
           flush_o = 1'b1;
@@ -1621,8 +1621,8 @@ module csr_regfile
         riscv::CSR_SPMPCFG15: begin
           // Odd-indexed cfg CSRs are not accessible in RV64
           if ((CVA6Cfg.RVS) && 
-              ((CVA6Cfg.XLEN == 32) || !csr_addr.csr_decode.address[0])) begin
-            automatic int idx = csr_addr.csr_decode.address[3:0];
+              ((CVA6Cfg.XLEN == 32) || !conv_csr_addr.csr_decode.address[0])) begin
+            automatic int idx = conv_csr_addr.csr_decode.address[3:0];
             for (int i = 0; i < (CVA6Cfg.XLEN/8); i++) begin
               spmpcfg_d[i+(idx*4)] = csr_wdata[i*8+:8];
             end
@@ -1698,7 +1698,7 @@ module csr_regfile
         riscv::CSR_SPMPADDR63: begin
         if (CVA6Cfg.RVS) begin
           // index is specified by the last byte in the address
-          automatic int idx = csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
+          automatic int idx = conv_csr_addr.csr_decode.address - riscv::CSR_SPMPADDR0;
           spmpaddr_d[idx[5:0]] = csr_wdata[CVA6Cfg.PLEN-3:0];
           // this instruction has side-effects
           flush_o = 1'b1;
@@ -2130,7 +2130,7 @@ module csr_regfile
                 riscv::CSR_PMPCFG14,
                 riscv::CSR_PMPCFG15: begin
           // index is calculated using PMPCFG0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPCFG0;
 
           // if index is not even and XLEN==64, raise exception
           if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) update_access_exception = 1'b1;
@@ -2205,7 +2205,7 @@ module csr_regfile
                 riscv::CSR_PMPADDR62,
                 riscv::CSR_PMPADDR63: begin
           // index is calculated using PMPADDR0 as the offset
-          automatic logic [11:0] index = csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
+          automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
           // check if the entry or the entry above is locked
           if (!pmpcfg_q[index].locked && !(pmpcfg_q[index+1].locked && pmpcfg_q[index+1].addr_mode == riscv::TOR)) begin
             pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];

@@ -185,7 +185,8 @@ module spmp_hyp
                             3'b001,
                             3'b101,
                             3'b100,
-                            3'b011: begin
+                            3'b011,
+                            3'b111: begin
                                 if (eff_Smode && enforce[k]) begin
                                     allow = 1'b1;
                                 end
@@ -194,13 +195,6 @@ module spmp_hyp
                             // Reserved encoding
                             3'b000: begin
                                 allow =   1'b0;
-                            end
-
-                            // Shared RO
-                            3'b111: begin
-                                if (access_R) begin
-                                    allow = 1'b1;
-                                end
                             end
 
                             // R for S-mode, Shared X
