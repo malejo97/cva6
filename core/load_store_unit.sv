@@ -105,6 +105,8 @@ module load_store_unit
     input  logic                                      mxr_i,
     // Make Executable Readable Virtual Supervisor - CSR_REGFILE
     input  logic                                      vmxr_i,
+    // SPMP Entry Count Extension - CSR_REGFILE
+    input  logic                                      mpmpdeleg_ext_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
     input  logic             [      CVA6Cfg.PPNW-1:0] satp_ppn_i,
     // TO_BE_COMPLETED - TO_BE_COMPLETED
@@ -357,6 +359,7 @@ module load_store_unit
         .vmxr_i           (vmxr_i),
         .hlvx_inst_i      (mmu_hlvx_inst),
         .mmu_enabled_i    (1'b0),
+        .mpmpdeleg_ext_i  (mpmpdeleg_ext_i),
 
         .if_req_i         (icache_areq_i),
         .if_req_o         (pmp_icache_areq_i),

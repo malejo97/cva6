@@ -116,6 +116,8 @@ module csr_regfile
     output logic mxr_o,
     // Make Executable Readable for VS-mode - EX_STAGE
     output logic vmxr_o,
+    // SPMP Entry Count Extension - CSR_REGFILE
+    output logic mpmpdeleg_ext_o,
     // TO_BE_COMPLETED - EX_STAGE
     output logic [CVA6Cfg.PPNW-1:0] satp_ppn_o,
     // TO_BE_COMPLETED - EX_STAGE
@@ -277,6 +279,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] miselect_q, miselect_d;
   logic fiom_d, fiom_q;
   logic mstce_d, mstce_q;
+  logic mpmpdeleg_ext_q, mpmpdeleg_ext_d;
 
   logic [CVA6Cfg.XLEN-1:0] stvec_q, stvec_d;
   logic [CVA6Cfg.XLEN-1:0] scounteren_q, scounteren_d;
@@ -1156,9 +1159,10 @@ module csr_regfile
           end
           riscv::CSR_MPMPDELEG: begin
             if (CVA6Cfg.SpmpPresent) begin
-              csr_rdata = (CVA6Cfg.XLEN == 64) ? 
-                          (CVA6Cfg.XLEN'(CVA6Cfg.NrPMPEntries) & ~64'h7):
-                          (CVA6Cfg.XLEN'(CVA6Cfg.NrPMPEntries) & ~32'h3);
+              csr_rdata = ((CVA6Cfg.VSpmpPresent) ? (mpmpdeleg_ext_q << 8) : 0) | 
+                          ((CVA6Cfg.XLEN == 64) ? 
+                           (CVA6Cfg.XLEN'(CVA6Cfg.NrPMPEntries) & ~64'h7):
+                           (CVA6Cfg.XLEN'(CVA6Cfg.NrPMPEntries) & ~32'h3));
             end
             else read_access_exception = 1'b1;
           end
@@ -1217,7 +1221,7 @@ module csr_regfile
               if (CVA6Cfg.SpmpPresent) begin
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
                 automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
-                if (spmp_idx < CVA6Cfg.NrSPMPEntries) begin
+                if (spmp_idx < CVA6Cfg.NrSPMPEntries && (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64)) begin
                   csr_rdata = CVA6Cfg.XLEN'({spmpcfg_q[spmp_idx], pmpcfg_q[pmp_idx]});
                 end
                 else begin
@@ -1231,7 +1235,7 @@ module csr_regfile
               if (CVA6Cfg.SpmpPresent) begin
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
                 automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
-                if (spmp_idx < CVA6Cfg.NrSPMPEntries) begin
+                if (spmp_idx < CVA6Cfg.NrSPMPEntries && (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64)) begin
                   // We only support granularity 8 bytes (G=1)
                   // bits spmpaddr[G-1:0] are all 0s when mode is OFF or TOR
                   // bits spmpaddr[G-2:0] reads all 1s when mode is NAPOT
@@ -1256,7 +1260,7 @@ module csr_regfile
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                           + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
                 automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
-                if (vspmp_idx < CVA6Cfg.NrVSPMPEntries) begin
+                if (vspmp_idx < CVA6Cfg.NrVSPMPEntries && (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64)) begin
                   csr_rdata = CVA6Cfg.XLEN'({vspmpcfg_q[vspmp_idx], pmpcfg_q[pmp_idx]});
                 end
                 else begin
@@ -1271,7 +1275,7 @@ module csr_regfile
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                           + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
                 automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
-                if (vspmp_idx < CVA6Cfg.NrVSPMPEntries) begin
+                if (vspmp_idx < CVA6Cfg.NrVSPMPEntries && (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64)) begin
                   // We only support granularity 8 bytes (G=1)
                   // bits spmpaddr[G-1:0] are all 0s when mode is OFF or TOR
                   // bits spmpaddr[G-2:0] reads all 1s when mode is NAPOT
@@ -1417,9 +1421,6 @@ module csr_regfile
       vsiselect_d              = vsiselect_q;
       vsatp_d                  = vsatp_q;
       vstimecmp_d              = vstimecmp_q;
-      vspmpcfg_d               = vspmpcfg_q;
-      vspmpen_d                = vspmpen_q;
-      vspmpenh_d               = vspmpenh_q;
       hgatp_d                  = hgatp_q;
       hspmpen_d                = hspmpen_q;
       hspmpenh_d               = hspmpenh_q;
@@ -1444,9 +1445,6 @@ module csr_regfile
       stimecmp_d     = stimecmp_q;
       siselect_d     = siselect_q;
       satp_d         = satp_q;
-      spmpcfg_d      = spmpcfg_q;
-      spmpen_d       = spmpen_q;
-      spmpenh_d      = spmpenh_q;
     end
 
     en_ld_st_translation_d = en_ld_st_translation_q;
@@ -1454,6 +1452,19 @@ module csr_regfile
 
     pmpcfg_d               = pmpcfg_q;
     pmpaddr_d              = pmpaddr_q;
+
+    if (CVA6Cfg.SpmpPresent) begin
+      spmpcfg_d = spmpcfg_q;
+      spmpen_d = spmpen_q;
+      spmpenh_d = spmpenh_q;
+    end
+
+    if (CVA6Cfg.VSpmpPresent) begin
+      vspmpcfg_d = vspmpcfg_q;
+      vspmpen_d = vspmpen_q;
+      vspmpenh_d = vspmpenh_q;
+      mpmpdeleg_ext_d = mpmpdeleg_ext_q;
+    end
 
     // check for correct access rights and that we are writing
     if (csr_we) begin
@@ -1639,7 +1650,9 @@ module csr_regfile
                   if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M || (priv_lvl_o == riscv::PRIV_LVL_S && !v_q)
                   ) begin
-                    vspmpen_d[i] = csr_wdata[i];
+                    if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
+                      vspmpen_d[i] = csr_wdata[i];
+                    end
                   end
                 end
               end
@@ -1660,7 +1673,9 @@ module csr_regfile
                   if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M || (priv_lvl_o == riscv::PRIV_LVL_S && !v_q)
                   ) begin
-                    vspmpenh_d[i-32] = csr_wdata[i-32];
+                    if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
+                      vspmpenh_d[i-32] = csr_wdata[i-32];
+                    end
                   end
                 end
               end
@@ -1798,7 +1813,9 @@ module csr_regfile
                   if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
-                    spmpen_d[i] = csr_wdata[i];
+                    if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
+                      spmpen_d[i] = csr_wdata[i];
+                    end
                   end
                 end
               end
@@ -1819,7 +1836,9 @@ module csr_regfile
                   if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
-                    spmpenh_d[i-32] = csr_wdata[i-32];
+                    if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
+                      spmpenh_d[i-32] = csr_wdata[i-32];
+                    end
                   end
                 end
               end
@@ -1989,7 +2008,9 @@ module csr_regfile
                   if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
-                    hspmpen_d[i] = csr_wdata[i];
+                    if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
+                      hspmpen_d[i] = csr_wdata[i];
+                    end
                   end
                 end
               end
@@ -2010,7 +2031,9 @@ module csr_regfile
                   if ((!pmpcfg_q[pmp_idx].locked && !(pmpcfg_q[pmp_idx+1].locked && pmpcfg_q[pmp_idx+1].addr_mode == riscv::TOR)) || 
                         priv_lvl_o == riscv::PRIV_LVL_M
                   ) begin
-                    hspmpenh_d[i-32] = csr_wdata[i-32];
+                    if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
+                      hspmpenh_d[i-32] = csr_wdata[i-32];
+                    end
                   end
                 end
               end
@@ -2454,7 +2477,10 @@ module csr_regfile
             end
           end
           riscv::CSR_MPMPDELEG: begin
-            if (!CVA6Cfg.SpmpPresent) begin
+            if (CVA6Cfg.SpmpPresent) begin
+              if (CVA6Cfg.VSpmpPresent) mpmpdeleg_ext_d = csr_wdata[8];
+            end
+            else begin
               update_access_exception = 1'b1;
             end
           end
@@ -2521,7 +2547,7 @@ module csr_regfile
                 spmpcfg_d = spmpcfg_q;
                 pmpcfg_d = pmpcfg_q;
               end
-              else begin
+              else if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
                 spmpcfg_d[spmp_idx] = csr_wdata[15:8];
                 pmpcfg_d[pmp_idx] = csr_wdata[7:0];
               end
@@ -2540,7 +2566,7 @@ module csr_regfile
               ) begin
                 pmpaddr_d = pmpaddr_q;
               end
-              else begin
+              else if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
                 pmpaddr_d[pmp_idx] = csr_wdata[CVA6Cfg.PLEN-3:0];
               end
             end
@@ -2560,7 +2586,7 @@ module csr_regfile
                 vspmpcfg_d = vspmpcfg_q;
                 pmpcfg_d = pmpcfg_q;
               end
-              else begin
+              else if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
                 vspmpcfg_d[vspmp_idx] = csr_wdata[15:8];
                 pmpcfg_d[pmp_idx] = csr_wdata[7:0];
               end
@@ -2580,7 +2606,7 @@ module csr_regfile
               ) begin
                 pmpaddr_d = pmpaddr_q;
               end
-              else begin
+              else if (mpmpdeleg_ext_q || pmp_idx[7:0] < 8'd64) begin
                 pmpaddr_d[pmp_idx] = csr_wdata[CVA6Cfg.PLEN-3:0];
               end
             end
@@ -3456,11 +3482,13 @@ module csr_regfile
     end
     assign vspmpcfg_o = vspmpcfg_q;
     assign vspmpen_o = vspmpen[(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0];
+    assign mpmpdeleg_ext_o = mpmpdeleg_ext_q;
   end
   else begin
     assign vspmpen = '0;
     assign vspmpcfg_o = '0;
     assign vspmpen_o = '0;
+    assign mpmpdeleg_ext_o = 1'b0;
   end
 
   if (CVA6Cfg.SpmpPresent) begin
@@ -3532,12 +3560,6 @@ module csr_regfile
         stimecmp_q   <= {CVA6Cfg.XLEN{1'b0}}; 
         siselect_q   <= {CVA6Cfg.XLEN{1'b0}};
         satp_q       <= {CVA6Cfg.XLEN{1'b0}};
-        // Upon reset, all PMP resources belong to the M-mode PMP
-        for (int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
-          spmpcfg_q[i]  <= riscv::spmpcfg_t'(CVA6Cfg.SPMPCfgRstVal[i]);
-        end
-        spmpen_q     <= {CVA6Cfg.XLEN{1'b0}};
-        spmpenh_q    <= {CVA6Cfg.XLEN{1'b0}};
       end
 
       if (CVA6Cfg.RVH) begin
@@ -3567,12 +3589,6 @@ module csr_regfile
         vsiselect_q              <= {CVA6Cfg.XLEN{1'b0}};
         vsatp_q                  <= {CVA6Cfg.XLEN{1'b0}};
         en_ld_st_g_translation_q <= 1'b0;
-        // Upon reset, all PMP resources belong to the M-mode PMP
-        for (int i = 0; i < CVA6Cfg.NrVSPMPEntries; i++) begin
-          vspmpcfg_q[i]          <= riscv::spmpcfg_t'(CVA6Cfg.SPMPCfgRstVal[i]);
-        end
-        vspmpen_q                <= {CVA6Cfg.XLEN{1'b0}};
-        vspmpenh_q               <= {CVA6Cfg.XLEN{1'b0}};
       end
       // timer and counters
       cycle_q                <= 64'b0;
@@ -3587,6 +3603,25 @@ module csr_regfile
         pmpaddr_q[i] <= CVA6Cfg.PMPAddrRstVal[i][CVA6Cfg.PLEN-3:0];
       end
       pmpcfg_q[CVA6Cfg.NrPMPResource]  <= '0;
+
+      if (CVA6Cfg.SpmpPresent) begin
+        // Upon reset, all PMP resources belong to the M-mode PMP
+        for (int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
+          spmpcfg_q[i] <= riscv::spmpcfg_t'(CVA6Cfg.SPMPCfgRstVal[i]);
+        end
+        spmpen_q <= {CVA6Cfg.XLEN{1'b0}};
+        spmpenh_q <= {CVA6Cfg.XLEN{1'b0}};
+      end
+
+      if (CVA6Cfg.VSpmpPresent) begin
+          // Upon reset, all PMP resources belong to the M-mode PMP
+          for (int i = 0; i < CVA6Cfg.NrVSPMPEntries; i++) begin
+            vspmpcfg_q[i] <= riscv::spmpcfg_t'(CVA6Cfg.SPMPCfgRstVal[i]);
+          end
+          vspmpen_q <= {CVA6Cfg.XLEN{1'b0}};
+          vspmpenh_q <= {CVA6Cfg.XLEN{1'b0}};
+          mpmpdeleg_ext_q <= 1'b0;
+      end
     end else begin
       priv_lvl_q <= priv_lvl_d;
       // floating-point registers
@@ -3630,11 +3665,6 @@ module csr_regfile
         if (CVA6Cfg.RVSSTC) stimecmp_q <= stimecmp_d;
         siselect_q   <= siselect_d;
         satp_q       <= satp_d;
-        for(int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
-          spmpcfg_q[i] <= spmpcfg_d[i];
-        end
-        spmpen_q     <= spmpen_d;
-        spmpenh_q    <= spmpenh_d;
       end
       if (CVA6Cfg.RVH) begin
         v_q                      <= v_d;
@@ -3664,12 +3694,6 @@ module csr_regfile
         vsiselect_q              <= vsiselect_d;
         vsatp_q                  <= vsatp_d;
         en_ld_st_g_translation_q <= en_ld_st_g_translation_d;
-        for(int i = 0; i < CVA6Cfg.NrVSPMPEntries; i++) begin
-          vspmpcfg_q[i]          <= vspmpcfg_d[i];
-        end
-        
-        vspmpen_q                <= vspmpen_d;
-        vspmpenh_q               <= vspmpenh_d;
       end
       // timer and counters
       cycle_q                <= cycle_d;
@@ -3681,6 +3705,23 @@ module csr_regfile
       // pmp
       pmpcfg_q               <= pmpcfg_next;
       pmpaddr_q              <= pmpaddr_next;
+
+      if (CVA6Cfg.SpmpPresent) begin
+        for(int i = 0; i < CVA6Cfg.NrSPMPEntries; i++) begin
+          spmpcfg_q[i] <= spmpcfg_d[i];
+        end
+        spmpen_q <= spmpen_d;
+        spmpenh_q <= spmpenh_d;
+      end
+
+      if (CVA6Cfg.VSpmpPresent) begin
+        for(int i = 0; i < CVA6Cfg.NrVSPMPEntries; i++) begin
+          vspmpcfg_q[i] <= vspmpcfg_d[i];
+        end
+        vspmpen_q <= vspmpen_d;
+        vspmpenh_q <= vspmpenh_d;
+        mpmpdeleg_ext_q <= mpmpdeleg_ext_d;
+      end
     end
   end
 

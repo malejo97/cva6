@@ -189,6 +189,8 @@ module ex_stage
     input logic mxr_i,
     // Make executable readable Virtual Supervisor - CSR_REGFILE
     input logic vmxr_i,
+    // SPMP Entry Count Extension - CSR_REGFILE
+    input logic mpmpdeleg_ext_i,
     // TO_BE_COMPLETED - CSR_REGFILE
     input logic [CVA6Cfg.PPNW-1:0] satp_ppn_i,
     // TO_BE_COMPLETED - CSR_REGFILE
@@ -576,6 +578,7 @@ module ex_stage
       .vs_sum_i,
       .mxr_i,
       .vmxr_i,
+      .mpmpdeleg_ext_i,
       .satp_ppn_i,
       .vsatp_ppn_i,
       .hgatp_ppn_i,

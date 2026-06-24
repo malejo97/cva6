@@ -53,6 +53,7 @@ module spmp_hyp
     input  logic v_i,
     input  logic is_hlvx_inst_i,
     input  logic mmu_enabled_i,
+    input  logic mpmpdeleg_ext_i,
     input  riscv::pmpcfg_t [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0] pmpcfg_i,
     input  logic [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0][CVA6Cfg.PLEN-3:0] pmpaddr_i,
     input  riscv::spmpcfg_t [(NrSPMPEntries > 0 ? NrSPMPEntries-1 : 0):0] spmpcfg_i,
@@ -159,6 +160,9 @@ module spmp_hyp
             end
         end : gen_spmp_enforce
 
+        localparam int unsigned PmpIdxOff = (is_vSPMP) ? 
+                                            (CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries) : 
+                                            (CVA6Cfg.NrPMPEntries);
         logic allow;
 
         always_comb begin : gen_spmp_check
@@ -171,7 +175,8 @@ module spmp_hyp
             // The lowest-numbered SPMP matching entry determines whether the access is allowed or fails
             for (k = 0; k < NrSPMPEntries; k++) begin
 
-                if (match[k] && (spmpen_i[k] || !CVA6Cfg.SPMPSwitchOptEn)) begin
+                if (match[k] && (spmpen_i[k] || !CVA6Cfg.SPMPSwitchOptEn) &&
+                    (mpmpdeleg_ext_i || k+PmpIdxOff < 32'd64)) begin
 
                     // S-mode only rule
                     if (spmpcfg_i[k].shared) begin
@@ -269,7 +274,8 @@ module spmp_hyp
 
             // All M-mode accesses pass SPMP cheks
             // If the core MMU is enabled (vsatp.mode/hgatp.mode != Bare), SPMP is not used
-            if (bypass_check || mmu_enabled_i) begin
+            // If mpmpdeleg.ext=0 and all SPMP entries are beyond idx 63, consider as no entries delegated
+            if (bypass_check || mmu_enabled_i || (!mpmpdeleg_ext_i && PmpIdxOff[7:0] >= 8'd64)) begin
                 allow_o = 1'b1;
             end
 
