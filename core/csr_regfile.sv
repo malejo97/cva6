@@ -526,7 +526,7 @@ module csr_regfile
           end
           // vspmpen
           riscv::CSR_VSPMPEN: begin
-          if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent) begin
+          if (CVA6Cfg.VSpmpPresent) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               csr_rdata = vspmpen_q;
             end
@@ -535,7 +535,7 @@ module csr_regfile
           end
           riscv::CSR_VSPMPENH:
           // For RV64, only vspmpen is used
-          if (CVA6Cfg.RVS && CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin
+          if (CVA6Cfg.VSpmpPresent && (CVA6Cfg.XLEN == 32)) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               csr_rdata = vspmpenh_q;
             end
@@ -623,7 +623,7 @@ module csr_regfile
           else read_access_exception = 1'b1;
           // spmpen
           riscv::CSR_SPMPEN:
-          if (CVA6Cfg.RVS && CVA6Cfg.SpmpPresent) begin
+          if (CVA6Cfg.SpmpPresent) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               csr_rdata = spmpen_q;
             end
@@ -631,7 +631,7 @@ module csr_regfile
           else read_access_exception = 1'b1;
           riscv::CSR_SPMPENH:
           // For RV64, only spmpen is used
-          if (CVA6Cfg.RVS && CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin
+          if (CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               csr_rdata = spmpenh_q;
             end
@@ -726,7 +726,7 @@ module csr_regfile
             end
           end
           riscv::CSR_HSPMPDELEG: begin
-            if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent) begin
+            if (CVA6Cfg.VSpmpPresent) begin
               csr_rdata = (CVA6Cfg.XLEN == 64) ? 
                           (CVA6Cfg.XLEN'(CVA6Cfg.NrSPMPEntries) & ~64'h7):
                           (CVA6Cfg.XLEN'(CVA6Cfg.NrSPMPEntries) & ~32'h3);
@@ -1065,7 +1065,7 @@ module csr_regfile
             if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) read_access_exception = 1'b1;
             else begin
               // Check if entry is not delegated to S-mode
-              if (!CVA6Cfg.SpmpPresent || (index[5:0] < (CVA6Cfg.NrPMPEntries/4))) begin
+              if (index[3:0] < (CVA6Cfg.NrPMPEntries/4)) begin
                 csr_rdata = pmpcfg_q[index*4+:CVA6Cfg.XLEN/8];
               end
               else begin
@@ -1141,7 +1141,7 @@ module csr_regfile
             // index is calculated using PMPADDR0 as the offset
             automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
             // Check if entry is delegated to S-mode
-            if (!CVA6Cfg.SpmpPresent || index[5:0] < CVA6Cfg.NrPMPEntries) begin
+            if (index[5:0] < CVA6Cfg.NrPMPEntries) begin
               // Important: we only support granularity 8 bytes (G=1)
               // -> last bit of pmpaddr must be set 0/1 based on the mode:
               // NA4, NAPOT: 1
@@ -1214,7 +1214,7 @@ module csr_regfile
             end
             // spmpcfg
             riscv::CSR_SPMPCFG: begin
-              if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
+              if (CVA6Cfg.SpmpPresent) begin
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
                 automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
                 if (spmp_idx < CVA6Cfg.NrSPMPEntries) begin
@@ -1228,7 +1228,7 @@ module csr_regfile
             end
             // spmpaddr
             riscv::CSR_SPMPADDR: begin
-              if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
+              if (CVA6Cfg.SpmpPresent) begin
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
                 automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
                 if (spmp_idx < CVA6Cfg.NrSPMPEntries) begin
@@ -1252,7 +1252,7 @@ module csr_regfile
             end
             // vspmpcfg
             riscv::CSR_VSPMPCFG: begin
-              if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
+              if (CVA6Cfg.VSpmpPresent) begin
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                           + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
                 automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
@@ -1267,7 +1267,7 @@ module csr_regfile
             end
             // vspmpaddr
             riscv::CSR_VSPMPADDR: begin
-              if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
+              if (CVA6Cfg.VSpmpPresent) begin
                 automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                           + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
                 automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
@@ -1629,7 +1629,7 @@ module csr_regfile
           end
           // vspmpen
           riscv::CSR_VSPMPEN:
-          if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent) begin
+          if (CVA6Cfg.VSpmpPresent) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 0; i < CVA6Cfg.XLEN; i++) begin
                 automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
@@ -1650,7 +1650,7 @@ module csr_regfile
           else update_access_exception = 1'b1;
           riscv::CSR_VSPMPENH:
           // For RV64, only vspmpen is used
-          if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin 
+          if (CVA6Cfg.VSpmpPresent && (CVA6Cfg.XLEN == 32)) begin 
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 32; i < 64; i++) begin
                 automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
@@ -1788,7 +1788,7 @@ module csr_regfile
           else update_access_exception = 1'b1;
           // spmpen
           riscv::CSR_SPMPEN:
-          if (CVA6Cfg.RVS && CVA6Cfg.SpmpPresent) begin
+          if (CVA6Cfg.SpmpPresent) begin
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 0; i < CVA6Cfg.XLEN; i++) begin
                 automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries;
@@ -1809,7 +1809,7 @@ module csr_regfile
           else update_access_exception = 1'b1;
           riscv::CSR_SPMPENH:
           // For RV64, only spmpen is used
-          if (CVA6Cfg.RVS && CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin 
+          if (CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin 
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 32; i < 64; i++) begin
                 automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries;
@@ -1973,7 +1973,7 @@ module csr_regfile
             end
           end
           riscv::CSR_HSPMPDELEG: begin
-            if (!CVA6Cfg.RVH || !CVA6Cfg.SpmpPresent) begin
+            if (CVA6Cfg.VSpmpPresent) begin
               update_access_exception = 1'b1;
             end
           end
@@ -2000,7 +2000,7 @@ module csr_regfile
           else update_access_exception = 1'b1;
           riscv::CSR_HSPMPENH:
           // For RV64, only hspmpen is used
-          if (CVA6Cfg.RVH && (CVA6Cfg.XLEN == 32) && CVA6Cfg.SpmpPresent) begin 
+          if (CVA6Cfg.RVH && CVA6Cfg.SpmpPresent && (CVA6Cfg.XLEN == 32)) begin 
             if (CVA6Cfg.SPMPSwitchOptEn) begin
               for (int i = 32; i < 64; i++) begin
                 automatic int pmp_idx = i + CVA6Cfg.NrPMPEntries;
@@ -2366,7 +2366,7 @@ module csr_regfile
             if (CVA6Cfg.XLEN == 64 && index[0] == 1'b1) update_access_exception = 1'b1;
             else begin
               // Check if entry is delegated to S-mode
-              if (!CVA6Cfg.SpmpPresent || index[5:0] < CVA6Cfg.NrPMPEntries) begin
+              if (index[3:0] < CVA6Cfg.NrPMPEntries/4) begin
                 for (int i = 0; i < CVA6Cfg.XLEN / 8; i++) begin
                   if (!pmpcfg_q[index*4+i].locked) pmpcfg_d[index*4+i] = csr_wdata[i*8+:8];
                 end
@@ -2443,7 +2443,7 @@ module csr_regfile
             // index is calculated using PMPADDR0 as the offset
             automatic logic [11:0] index = conv_csr_addr.address[11:0] - riscv::CSR_PMPADDR0;
             // Check if entry is delegated to S-mode
-            if (!CVA6Cfg.SpmpPresent || index[5:0] < CVA6Cfg.NrPMPEntries) begin
+            if (index[5:0] < CVA6Cfg.NrPMPEntries) begin
               // check if the entry or the entry above is locked
               if (!pmpcfg_q[index].locked && !(pmpcfg_q[index+1].locked && pmpcfg_q[index+1].addr_mode == riscv::TOR)) begin
                 pmpaddr_d[index] = csr_wdata[CVA6Cfg.PLEN-3:0];
@@ -2510,7 +2510,7 @@ module csr_regfile
           end
           // spmpcfg
           riscv::CSR_SPMPCFG: begin
-            if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
+            if (CVA6Cfg.SpmpPresent) begin
               automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
               automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
               // Only M-mode accesses via miselect can unlock/modify locked SPMP CSRs
@@ -2530,7 +2530,7 @@ module csr_regfile
           end
           // spmpaddr
           riscv::CSR_SPMPADDR: begin
-            if (CVA6Cfg.RVS && CVA6Cfg.NrSPMPEntries != 0) begin
+            if (CVA6Cfg.SpmpPresent) begin
               automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) + CVA6Cfg.NrPMPEntries;
               automatic int spmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
               // Only M-mode accesses via miselect can unlock/modify locked SPMP CSRs
@@ -2548,7 +2548,7 @@ module csr_regfile
           end
           // vspmpcfg
           riscv::CSR_VSPMPCFG: begin
-            if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
+            if (CVA6Cfg.VSpmpPresent) begin
               automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                         + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
               automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
@@ -2569,7 +2569,7 @@ module csr_regfile
           end
           // vspmpaddr
           riscv::CSR_VSPMPADDR: begin
-            if (CVA6Cfg.RVH && CVA6Cfg.NrVSPMPEntries != 0) begin
+            if (CVA6Cfg.VSpmpPresent) begin
               automatic int pmp_idx = (int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE) 
                                         + CVA6Cfg.NrPMPEntries + CVA6Cfg.NrSPMPEntries;
               automatic int vspmp_idx = int'(ind_csr_addr.xiselect) - riscv::XISELECT_SPMP_BASE;
@@ -3447,50 +3447,40 @@ module csr_regfile
   assign single_step_o = CVA6Cfg.DebugEn ? dcsr_q.step : 1'b0;
   assign mcountinhibit_o = {{29 - MHPMCounterNum{1'b0}}, mcountinhibit_q};
 
-  if (CVA6Cfg.SpmpPresent && CVA6Cfg.RVH) begin
+  if (CVA6Cfg.VSpmpPresent) begin
     if (CVA6Cfg.XLEN == 32) begin
-      assign spmpen = {spmpenh_q, spmpen_q};
       assign vspmpen = {vspmpenh_q, vspmpen_q};
-      assign hspmpen = {hspmpenh_q, hspmpen_q};
     end
-    else if (CVA6Cfg.XLEN == 64) begin
-      assign spmpen = spmpen_q;
+    else begin
       assign vspmpen = vspmpen_q;
-      assign hspmpen = hspmpen_q;
     end
-    else begin
-      assign spmpen = '0;
-      assign vspmpen = '0;
-      assign hspmpen = '0;
-    end
-    assign spmpcfg_o = spmpcfg_q;
     assign vspmpcfg_o = vspmpcfg_q;
-    assign spmpen_o = spmpen[(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0];
     assign vspmpen_o = vspmpen[(CVA6Cfg.NrVSPMPEntries > 0 ? CVA6Cfg.NrVSPMPEntries-1 : 0):0];
-    assign hspmpen_o = hspmpen[(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0];
   end
-  else if (CVA6Cfg.SpmpPresent && CVA6Cfg.RVS) begin
-    if (CVA6Cfg.XLEN == 32) begin
-      assign spmpen = {spmpenh_q, spmpen_q};
-    end
-    else if (CVA6Cfg.XLEN == 64) begin
-      assign spmpen = spmpen_q;
-    end
-    else begin
-      assign spmpen = '0;
-    end
-    assign spmpcfg_o = spmpcfg_q;
-    assign spmpen_o = spmpen[(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0];
+  else begin
+    assign vspmpen = '0;
     assign vspmpcfg_o = '0;
     assign vspmpen_o = '0;
-    assign hspmpen_o = '0;
+  end
+
+  if (CVA6Cfg.SpmpPresent) begin
+    if (CVA6Cfg.XLEN == 32) begin
+      assign spmpen = {spmpenh_q, spmpen_q};
+      assign hspmpen = {hspmpenh_q, hspmpen_q};
+    end
+    else begin
+      assign spmpen = spmpen_q;
+      assign hspmpen = hspmpen_q;
+    end
+    assign spmpcfg_o = spmpcfg_q;
+    assign spmpen_o = spmpen[(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0];
+    assign hspmpen_o = hspmpen[(CVA6Cfg.NrSPMPEntries > 0 ? CVA6Cfg.NrSPMPEntries-1 : 0):0];
   end
   else begin
     assign spmpcfg_o = '0;
-    assign vspmpcfg_o = '0;
     assign spmpen = '0;
     assign spmpen_o = '0;
-    assign vspmpen_o = '0;
+    assign hspmpen = '0;
     assign hspmpen_o = '0;
   end
 

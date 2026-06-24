@@ -29,6 +29,9 @@ package build_config_pkg;
     int unsigned VpnLen = (CVA6Cfg.XLEN == 64) ? (CVA6Cfg.RVH ? 29 : 27) : 20;
     int unsigned PtLevels = (CVA6Cfg.XLEN == 64) ? 3 : 2;
 
+    bit SpmpEnabled = CVA6Cfg.RVS && CVA6Cfg.SpmpPresent;
+    bit VSpmpEnabled = CVA6Cfg.RVH && SpmpEnabled && CVA6Cfg.VSpmpPresent;
+
     config_pkg::cva6_cfg_t cfg;
 
     cfg.XLEN = CVA6Cfg.XLEN;
@@ -111,12 +114,13 @@ package build_config_pkg;
     cfg.PMPAddrRstVal = CVA6Cfg.PMPAddrRstVal;
     cfg.PMPEntryReadOnly = CVA6Cfg.PMPEntryReadOnly;
     cfg.PMPNapotEn = CVA6Cfg.PMPNapotEn;
-    cfg.SpmpPresent = CVA6Cfg.SpmpPresent;
+    cfg.SpmpPresent = SpmpEnabled;
     cfg.NrPMPResource = CVA6Cfg.NrPMPEntries;
-    cfg.NrSPMPEntries = (CVA6Cfg.SpmpPresent) ? 
-                          (CVA6Cfg.RVH ? CVA6Cfg.PMPNumHyp : (CVA6Cfg.NrPMPEntries - CVA6Cfg.PMPNum)) 
-                          : 0;
-    cfg.NrVSPMPEntries = (CVA6Cfg.SpmpPresent && CVA6Cfg.RVH) ? 
+    cfg.NrSPMPEntries = (SpmpEnabled) ? 
+                        (VSpmpEnabled ? CVA6Cfg.PMPNumHyp : (CVA6Cfg.NrPMPEntries - CVA6Cfg.PMPNum)) 
+                        : 0;
+    cfg.VSpmpPresent = VSpmpEnabled;
+    cfg.NrVSPMPEntries =  (VSpmpEnabled) ? 
                           (CVA6Cfg.NrPMPEntries - CVA6Cfg.PMPNum - CVA6Cfg.PMPNumHyp) 
                           : 0;
     cfg.SPMPSwitchOptEn = CVA6Cfg.SPMPSwitchOptEn;

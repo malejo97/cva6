@@ -334,95 +334,93 @@ module load_store_unit
     //------
     // SPMP
     //------
-    if (CVA6Cfg.SpmpPresent) begin : gen_spmp
 
-      // Double-stage SPMP
-      if (CVA6Cfg.RVH) begin : gen_double_spmp
+    // Double-stage SPMP
+    if (CVA6Cfg.VSpmpPresent) begin : gen_double_spmp
 
-        spmp_interface_hyp #(
-          .CVA6Cfg          (CVA6Cfg),
-          .icache_areq_t    (icache_areq_t),
-          .icache_arsp_t    (icache_arsp_t),
-          .exception_t      (exception_t)
-        ) i_spmp_interface_hyp (
-          .clk_i            (clk_i),
-          .rst_ni           (rst_ni),
+      spmp_interface_hyp #(
+        .CVA6Cfg          (CVA6Cfg),
+        .icache_areq_t    (icache_areq_t),
+        .icache_arsp_t    (icache_arsp_t),
+        .exception_t      (exception_t)
+      ) i_spmp_interface_hyp (
+        .clk_i            (clk_i),
+        .rst_ni           (rst_ni),
 
-          .priv_lvl_i       (priv_lvl_i),
-          .v_i              (v_i),
-          .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
-          .ld_st_v_i        (ld_st_v_i),
-          .sum_i            (sum_i),
-          .vs_sum_i         (vs_sum_i),
-          .mxr_i            (mxr_i),
-          .vmxr_i           (vmxr_i),
-          .hlvx_inst_i      (mmu_hlvx_inst),
-          .mmu_enabled_i    (1'b0),
+        .priv_lvl_i       (priv_lvl_i),
+        .v_i              (v_i),
+        .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
+        .ld_st_v_i        (ld_st_v_i),
+        .sum_i            (sum_i),
+        .vs_sum_i         (vs_sum_i),
+        .mxr_i            (mxr_i),
+        .vmxr_i           (vmxr_i),
+        .hlvx_inst_i      (mmu_hlvx_inst),
+        .mmu_enabled_i    (1'b0),
 
-          .if_req_i         (icache_areq_i),
-          .if_req_o         (pmp_icache_areq_i),
+        .if_req_i         (icache_areq_i),
+        .if_req_o         (pmp_icache_areq_i),
 
-          // LSU interface
-          .lsu_valid_i      (translation_req),
-          .lsu_vaddr_i      (mmu_vaddr),
-          .lsu_tinst_i      (mmu_tinst),
-          .lsu_is_store_i   (st_translation_req),
-          .misaligned_ex_i  (misaligned_exception),
+        // LSU interface
+        .lsu_valid_i      (translation_req),
+        .lsu_vaddr_i      (mmu_vaddr),
+        .lsu_tinst_i      (mmu_tinst),
+        .lsu_is_store_i   (st_translation_req),
+        .misaligned_ex_i  (misaligned_exception),
 
-          .lsu_valid_o      (pmp_translation_valid),
-          .lsu_is_store_o   (pmp_is_store),
-          .lsu_paddr_o      (lsu_paddr),
-          .lsu_exception_o  (pmp_exception),
+        .lsu_valid_o      (pmp_translation_valid),
+        .lsu_is_store_o   (pmp_is_store),
+        .lsu_paddr_o      (lsu_paddr),
+        .lsu_exception_o  (pmp_exception),
 
-          .pmpcfg_i         (pmpcfg_i),
-          .pmpaddr_i        (pmpaddr_i),
-          .spmpcfg_i        (spmpcfg_i),
-          .vspmpcfg_i       (vspmpcfg_i),
-          .spmpen_i         (spmpen_i),
-          .vspmpen_i        (vspmpen_i),
-          .hspmpen_i        (hspmpen_i)
-        );
-      end : gen_double_spmp
+        .pmpcfg_i         (pmpcfg_i),
+        .pmpaddr_i        (pmpaddr_i),
+        .spmpcfg_i        (spmpcfg_i),
+        .vspmpcfg_i       (vspmpcfg_i),
+        .spmpen_i         (spmpen_i),
+        .vspmpen_i        (vspmpen_i),
+        .hspmpen_i        (hspmpen_i)
+      );
+    end : gen_double_spmp
 
-      // Single-stage SPMP
-      else begin : gen_single_spmp
+    // Single-stage SPMP
+    else if (CVA6Cfg.SpmpPresent) begin : gen_single_spmp
 
-        spmp_interface #(
-          .CVA6Cfg          (CVA6Cfg),
-          .icache_areq_t    (icache_areq_t),
-          .icache_arsp_t    (icache_arsp_t),
-          .exception_t      (exception_t)
-        ) i_spmp_interface (
-          .clk_i            (clk_i),
-          .rst_ni           (rst_ni),
+      spmp_interface #(
+        .CVA6Cfg          (CVA6Cfg),
+        .icache_areq_t    (icache_areq_t),
+        .icache_arsp_t    (icache_arsp_t),
+        .exception_t      (exception_t)
+      ) i_spmp_interface (
+        .clk_i            (clk_i),
+        .rst_ni           (rst_ni),
 
-          .priv_lvl_i       (priv_lvl_i),
-          .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
-          .sum_i            (sum_i),
-          .mxr_i            (mxr_i),
-          .mmu_enabled_i    (1'b0),
+        .priv_lvl_i       (priv_lvl_i),
+        .ld_st_priv_lvl_i (ld_st_priv_lvl_i),
+        .sum_i            (sum_i),
+        .mxr_i            (mxr_i),
+        .mmu_enabled_i    (1'b0),
 
-          .if_req_i         (icache_areq_i),
-          .if_req_o         (pmp_icache_areq_i),
+        .if_req_i         (icache_areq_i),
+        .if_req_o         (pmp_icache_areq_i),
 
-          // LSU interface
-          .lsu_valid_i      (translation_req),
-          .lsu_vaddr_i      (mmu_vaddr),
-          .lsu_is_store_i   (st_translation_req),
-          .misaligned_ex_i  (misaligned_exception),
+        // LSU interface
+        .lsu_valid_i      (translation_req),
+        .lsu_vaddr_i      (mmu_vaddr),
+        .lsu_is_store_i   (st_translation_req),
+        .misaligned_ex_i  (misaligned_exception),
 
-          .lsu_valid_o      (pmp_translation_valid),
-          .lsu_is_store_o   (pmp_is_store),
-          .lsu_paddr_o      (lsu_paddr),
-          .lsu_exception_o  (pmp_exception),
+        .lsu_valid_o      (pmp_translation_valid),
+        .lsu_is_store_o   (pmp_is_store),
+        .lsu_paddr_o      (lsu_paddr),
+        .lsu_exception_o  (pmp_exception),
 
-          .pmpcfg_i         (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
-          .spmpcfg_i        (spmpcfg_i),
-          .spmpaddr_i       (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
-          .spmpen_i         (spmpen_i)
-        );
-      end : gen_single_spmp
-    end : gen_spmp
+        .pmpcfg_i         (pmpcfg_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
+        .spmpcfg_i        (spmpcfg_i),
+        .spmpaddr_i       (pmpaddr_i[(CVA6Cfg.NrPMPResource-1):CVA6Cfg.NrPMPEntries]),
+        .spmpen_i         (spmpen_i)
+      );
+    end : gen_single_spmp
 
     // No SPMP
     else begin : no_spmp

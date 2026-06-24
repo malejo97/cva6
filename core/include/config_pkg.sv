@@ -124,6 +124,8 @@ package config_pkg;
     bit                          SpmpPresent;
     // Number of M-mode PMP entries
     int unsigned                 PMPNum;
+    // vSPMP extension enable
+    bit                          VSpmpPresent;
     // Number of HS-mode SPMP entries
     int unsigned                 PMPNumHyp;
     // SPMP context-switching optimization
@@ -319,6 +321,7 @@ package config_pkg;
     bit                          SpmpPresent;
     int unsigned                 NrPMPResource;
     int unsigned                 NrSPMPEntries;
+    bit                          VSpmpPresent;
     int unsigned                 NrVSPMPEntries;
     bit                          SPMPSwitchOptEn;
     logic [63:0][63:0]           SPMPCfgRstVal;
