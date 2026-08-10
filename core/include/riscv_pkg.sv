@@ -359,6 +359,7 @@ package riscv;
   localparam int unsigned IRQ_VS_EXT = 10;
   localparam int unsigned IRQ_M_EXT = 11;
   localparam int unsigned IRQ_HS_EXT = 12;
+  localparam int unsigned IRQ_LCOFIP = 13;
 
   localparam logic [31:0] MIP_SSIP = 1 << IRQ_S_SOFT;
   localparam logic [31:0] MIP_VSSIP = 1 << IRQ_VS_SOFT;
@@ -370,6 +371,7 @@ package riscv;
   localparam logic [31:0] MIP_VSEIP = 1 << IRQ_VS_EXT;
   localparam logic [31:0] MIP_MEIP = 1 << IRQ_M_EXT;
   localparam logic [31:0] MIP_SGEIP = 1 << IRQ_HS_EXT;
+  localparam logic [31:0] MIP_LCOFIP = 1 << IRQ_LCOFIP;
 
   // ----------------------
   // PseudoInstructions Codes
@@ -447,6 +449,7 @@ package riscv;
     CSR_SATP             = 12'h180,
     CSR_SPMPEN           = 12'h183,
     CSR_SPMPENH          = 12'h193,
+    CSR_SCOUNTOVF        = 12'hDA0,
     CSR_STOPI            = 12'hDB0,
     // Hypervisor-extended Supervisor Mode CSRs
     CSR_HSTATUS          = 12'h600,
@@ -524,6 +527,35 @@ package riscv;
     CSR_MHPM_EVENT_29    = 12'h33D,  //Reserved
     CSR_MHPM_EVENT_30    = 12'h33E,  //Reserved
     CSR_MHPM_EVENT_31    = 12'h33F,  //Reserved
+    CSR_MHPM_EVENT_3H    = 12'h723,  //Machine performance monitoring Event Selector
+    CSR_MHPM_EVENT_4H    = 12'h724,  //Machine performance monitoring Event Selector
+    CSR_MHPM_EVENT_5H    = 12'h725,  //Machine performance monitoring Event Selector
+    CSR_MHPM_EVENT_6H    = 12'h726,  //Machine performance monitoring Event Selector
+    CSR_MHPM_EVENT_7H    = 12'h727,  //Machine performance monitoring Event Selector
+    CSR_MHPM_EVENT_8H    = 12'h728,  //Machine performance monitoring Event Selector
+    CSR_MHPM_EVENT_9H    = 12'h729,  //Reserved
+    CSR_MHPM_EVENT_10H   = 12'h72A,  //Reserved
+    CSR_MHPM_EVENT_11H   = 12'h72B,  //Reserved
+    CSR_MHPM_EVENT_12H   = 12'h72C,  //Reserved
+    CSR_MHPM_EVENT_13H   = 12'h72D,  //Reserved
+    CSR_MHPM_EVENT_14H   = 12'h72E,  //Reserved
+    CSR_MHPM_EVENT_15H   = 12'h72F,  //Reserved
+    CSR_MHPM_EVENT_16H   = 12'h730,  //Reserved
+    CSR_MHPM_EVENT_17H   = 12'h731,  //Reserved
+    CSR_MHPM_EVENT_18H   = 12'h732,  //Reserved
+    CSR_MHPM_EVENT_19H   = 12'h733,  //Reserved
+    CSR_MHPM_EVENT_20H   = 12'h734,  //Reserved
+    CSR_MHPM_EVENT_21H   = 12'h735,  //Reserved
+    CSR_MHPM_EVENT_22H   = 12'h736,  //Reserved
+    CSR_MHPM_EVENT_23H   = 12'h737,  //Reserved
+    CSR_MHPM_EVENT_24H   = 12'h738,  //Reserved
+    CSR_MHPM_EVENT_25H   = 12'h739,  //Reserved
+    CSR_MHPM_EVENT_26H   = 12'h73A,  //Reserved
+    CSR_MHPM_EVENT_27H   = 12'h73B,  //Reserved
+    CSR_MHPM_EVENT_28H   = 12'h73C,  //Reserved
+    CSR_MHPM_EVENT_29H   = 12'h73D,  //Reserved
+    CSR_MHPM_EVENT_30H   = 12'h73E,  //Reserved
+    CSR_MHPM_EVENT_31H   = 12'h73F,  //Reserved
     CSR_MSCRATCH         = 12'h340,
     CSR_MEPC             = 12'h341,
     CSR_MCAUSE           = 12'h342,

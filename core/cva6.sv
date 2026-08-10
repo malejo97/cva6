@@ -589,6 +589,8 @@ module cva6
   logic [11:0] addr_csr_perf;
   logic [CVA6Cfg.XLEN-1:0] data_csr_perf, data_perf_csr;
   logic we_csr_perf;
+  logic [MHPMCounterNum-1:0] counter_of;
+  logic [MHPMCounterNum-1:0] mhpmevent_of;
 
   logic icache_flush_ctrl_cache;
   logic itlb_miss_ex_perf;
@@ -1196,6 +1198,8 @@ module cva6
       .perf_data_o             (data_csr_perf),
       .perf_data_i             (data_perf_csr),
       .perf_we_o               (we_csr_perf),
+      .counter_of_i            (counter_of),
+      .mhpmevent_of_i          (mhpmevent_of),
       .pmpcfg_o                (pmpcfg),
       .pmpaddr_o               (pmpaddr),
       .spmpcfg_o               (spmpcfg),
@@ -1227,10 +1231,14 @@ module cva6
         .clk_i         (clk_i),
         .rst_ni        (rst_ni),
         .debug_mode_i  (debug_mode),
+        .priv_lvl_i    (priv_lvl),
+        .v_i           (v),
         .addr_i        (addr_csr_perf),
         .we_i          (we_csr_perf),
         .data_i        (data_csr_perf),
         .data_o        (data_perf_csr),
+        .counter_of_o  (counter_of),
+        .mhpmevent_of_o(mhpmevent_of),
         .commit_instr_i(commit_instr_id_commit),
         .commit_ack_i  (commit_ack),
 

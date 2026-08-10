@@ -174,6 +174,10 @@ module csr_regfile
     input logic [CVA6Cfg.XLEN-1:0] perf_data_i,
     // TO_BE_COMPLETED - PERF_COUNTERS
     output logic perf_we_o,
+    // single_cycle overflow signal - PERF_COUNTERS
+    input logic [MHPMCounterNum-1:0] counter_of_i,
+    // mhpmevent.OF signal - PERF_COUNTERS
+    input logic [MHPMCounterNum-1:0] mhpmevent_of_i,
     // PMP configuration containing pmpcfg for max 64 PMPs - EX_STAGE
     output riscv::pmpcfg_t [(CVA6Cfg.NrPMPResource > 0 ? CVA6Cfg.NrPMPResource-1 : 0):0] pmpcfg_o,
     // PMP addresses - EX_STAGE
@@ -636,6 +640,15 @@ module csr_regfile
               csr_rdata = spmpenh_q;
             end
           end
+          riscv::CSR_SCOUNTOVF:
+          if (CVA6Cfg.RVS) begin
+            if ((priv_lvl_o == riscv::PRIV_LVL_S && !v_q) || priv_lvl_o == riscv::PRIV_LVL_HS) begin
+              csr_rdata = {{29 - MHPMCounterNum{1'b0}}, mhpmevent_of_i, 3'b0} & mcounteren_q;
+            end
+            else if (priv_lvl_o == riscv::PRIV_LVL_S && v_q) begin
+              csr_rdata = {{29 - MHPMCounterNum{1'b0}}, mhpmevent_of_i, 3'b0} & mcounteren_q & hcounteren_q;
+            end
+          end
           else read_access_exception = 1'b1;
           // hypervisor mode registers
           riscv::CSR_HSTATUS:
@@ -895,6 +908,39 @@ module csr_regfile
           riscv::CSR_MHPM_EVENT_31 :
           csr_rdata = perf_data_i;
 
+          riscv::CSR_MHPM_EVENT_3H,
+          riscv::CSR_MHPM_EVENT_4H,
+          riscv::CSR_MHPM_EVENT_5H,
+          riscv::CSR_MHPM_EVENT_6H,
+          riscv::CSR_MHPM_EVENT_7H,
+          riscv::CSR_MHPM_EVENT_8H,
+          riscv::CSR_MHPM_EVENT_9H,
+          riscv::CSR_MHPM_EVENT_10H,
+          riscv::CSR_MHPM_EVENT_11H,
+          riscv::CSR_MHPM_EVENT_12H,
+          riscv::CSR_MHPM_EVENT_13H,
+          riscv::CSR_MHPM_EVENT_14H,
+          riscv::CSR_MHPM_EVENT_15H,
+          riscv::CSR_MHPM_EVENT_16H,
+          riscv::CSR_MHPM_EVENT_17H,
+          riscv::CSR_MHPM_EVENT_18H,
+          riscv::CSR_MHPM_EVENT_19H,
+          riscv::CSR_MHPM_EVENT_20H,
+          riscv::CSR_MHPM_EVENT_21H,
+          riscv::CSR_MHPM_EVENT_22H,
+          riscv::CSR_MHPM_EVENT_23H,
+          riscv::CSR_MHPM_EVENT_24H,
+          riscv::CSR_MHPM_EVENT_25H,
+          riscv::CSR_MHPM_EVENT_26H,
+          riscv::CSR_MHPM_EVENT_27H,
+          riscv::CSR_MHPM_EVENT_28H,
+          riscv::CSR_MHPM_EVENT_29H,
+          riscv::CSR_MHPM_EVENT_30H,
+          riscv::CSR_MHPM_EVENT_31H :
+          if (CVA6Cfg.XLEN == 32) csr_rdata = perf_data_i;
+          else read_access_exception = 1'b1;
+
+          // Performance Counters
           riscv::CSR_MHPM_COUNTER_3,
           riscv::CSR_MHPM_COUNTER_4,
           riscv::CSR_MHPM_COUNTER_5,
@@ -1710,7 +1756,7 @@ module csr_regfile
           riscv::CSR_SIP: begin
             if (CVA6Cfg.RVS) begin
               // only the supervisor software interrupt is write-able, iff delegated
-              mask  = CVA6Cfg.XLEN'(riscv::MIP_SSIP) & mideleg_q;
+              mask  = (CVA6Cfg.XLEN'(riscv::MIP_SSIP) | CVA6Cfg.XLEN'(riscv::MIP_LCOFIP)) & mideleg_q;
               mip_d = (mip_q & ~mask) | (csr_wdata & mask);
             end else begin
               update_access_exception = 1'b1;
@@ -1828,6 +1874,9 @@ module csr_regfile
             flush_o = 1'b1;
           end
           else update_access_exception = 1'b1;
+          riscv::CSR_SCOUNTOVF: begin
+            update_access_exception = 1'b1;
+          end
           //hypervisor mode registers
           riscv::CSR_HSTATUS: begin
             if (CVA6Cfg.RVH) begin
@@ -2104,7 +2153,8 @@ module csr_regfile
             if (CVA6Cfg.RVS) begin
               mask = CVA6Cfg.XLEN'(riscv::MIP_SSIP)
                       | CVA6Cfg.XLEN'(riscv::MIP_STIP)
-                      | CVA6Cfg.XLEN'(riscv::MIP_SEIP);
+                      | CVA6Cfg.XLEN'(riscv::MIP_SEIP)
+                      | CVA6Cfg.XLEN'(riscv::MIP_LCOFIP);
               if (CVA6Cfg.RVH) begin
                 mideleg_d = (mideleg_q & ~mask) | (csr_wdata & mask) | HS_DELEG_INTERRUPTS[CVA6Cfg.XLEN-1:0];
               end else begin
@@ -2126,7 +2176,8 @@ module csr_regfile
                       | CVA6Cfg.XLEN'(riscv::MIP_SEIP)
                       | CVA6Cfg.XLEN'(riscv::MIP_MSIP)
                       | CVA6Cfg.XLEN'(riscv::MIP_MTIP)
-                      | CVA6Cfg.XLEN'(riscv::MIP_MEIP);
+                      | CVA6Cfg.XLEN'(riscv::MIP_MEIP)
+                      | CVA6Cfg.XLEN'(riscv::MIP_LCOFIP);
             end else begin
               if (CVA6Cfg.RVS) begin
                 mask = CVA6Cfg.XLEN'(riscv::MIP_SSIP)
@@ -2134,7 +2185,8 @@ module csr_regfile
                         | CVA6Cfg.XLEN'(riscv::MIP_SEIP)
                         | CVA6Cfg.XLEN'(riscv::MIP_MSIP)
                         | CVA6Cfg.XLEN'(riscv::MIP_MTIP)
-                        | CVA6Cfg.XLEN'(riscv::MIP_MEIP);
+                        | CVA6Cfg.XLEN'(riscv::MIP_MEIP)
+                        | CVA6Cfg.XLEN'(riscv::MIP_LCOFIP);
               end else begin
                 mask = CVA6Cfg.XLEN'(riscv::MIP_MSIP)
                         | CVA6Cfg.XLEN'(riscv::MIP_MTIP)
@@ -2177,10 +2229,12 @@ module csr_regfile
               mask = CVA6Cfg.XLEN'(riscv::MIP_SSIP)
                       | ((CVA6Cfg.RVSSTC && mstce_q) ? '0 : CVA6Cfg.XLEN'(riscv::MIP_STIP))
                       | CVA6Cfg.XLEN'(riscv::MIP_SEIP)
+                      | CVA6Cfg.XLEN'(riscv::MIP_LCOFIP)
                       | CVA6Cfg.XLEN'(riscv::MIP_VSSIP);
             end else if (CVA6Cfg.RVS) begin
               mask = CVA6Cfg.XLEN'(riscv::MIP_SSIP)
                       | ((CVA6Cfg.RVSSTC && mstce_q) ? '0 : CVA6Cfg.XLEN'(riscv::MIP_STIP))
+                      | CVA6Cfg.XLEN'(riscv::MIP_LCOFIP)
                       | CVA6Cfg.XLEN'(riscv::MIP_SEIP);
             end else begin
               mask = '0;
@@ -2261,6 +2315,42 @@ module csr_regfile
           riscv::CSR_MHPM_EVENT_31: begin
             perf_we_o   = 1'b1;
             perf_data_o = csr_wdata;
+          end
+
+          riscv::CSR_MHPM_EVENT_3H,
+          riscv::CSR_MHPM_EVENT_4H,
+          riscv::CSR_MHPM_EVENT_5H,
+          riscv::CSR_MHPM_EVENT_6H,
+          riscv::CSR_MHPM_EVENT_7H,
+          riscv::CSR_MHPM_EVENT_8H,
+          riscv::CSR_MHPM_EVENT_9H,
+          riscv::CSR_MHPM_EVENT_10H,
+          riscv::CSR_MHPM_EVENT_11H,
+          riscv::CSR_MHPM_EVENT_12H,
+          riscv::CSR_MHPM_EVENT_13H,
+          riscv::CSR_MHPM_EVENT_14H,
+          riscv::CSR_MHPM_EVENT_15H,
+          riscv::CSR_MHPM_EVENT_16H,
+          riscv::CSR_MHPM_EVENT_17H,
+          riscv::CSR_MHPM_EVENT_18H,
+          riscv::CSR_MHPM_EVENT_19H,
+          riscv::CSR_MHPM_EVENT_20H,
+          riscv::CSR_MHPM_EVENT_21H,
+          riscv::CSR_MHPM_EVENT_22H,
+          riscv::CSR_MHPM_EVENT_23H,
+          riscv::CSR_MHPM_EVENT_24H,
+          riscv::CSR_MHPM_EVENT_25H,
+          riscv::CSR_MHPM_EVENT_26H,
+          riscv::CSR_MHPM_EVENT_27H,
+          riscv::CSR_MHPM_EVENT_28H,
+          riscv::CSR_MHPM_EVENT_29H,
+          riscv::CSR_MHPM_EVENT_30H,
+          riscv::CSR_MHPM_EVENT_31H: begin
+            if (CVA6Cfg.XLEN == 32) begin
+              perf_we_o = 1'b1;
+              perf_data_o = csr_wdata;
+            end
+            else update_access_exception = 1'b1;
           end
 
           riscv::CSR_MHPM_COUNTER_3,
@@ -2652,6 +2742,10 @@ module csr_regfile
     mip_d[riscv::IRQ_M_SOFT] = '0;
     // Timer interrupt pending, coming from platform timer
     mip_d[riscv::IRQ_M_TIMER] = time_irq_i;
+    // Count overflow interrupt
+    if(|counter_of_i) begin
+      mip_d[riscv::IRQ_LCOFIP] = 1'b1;
+    end
     // Supervisor timer interrupt
     if(CVA6Cfg.RVS && CVA6Cfg.RVSSTC) begin
       mip_d[riscv::IRQ_S_TIMER] = (mstce_q) ? ((timer_i >= stimecmp_q) && (stimecmp_q != '0)) : 1'b0;
